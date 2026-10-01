@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NL50 Leak Lab</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Leak Lab">
+<meta name="theme-color" content="#E8EDEA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1512" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one 760px drill column, sticky HUD on top, fixed six-tab bar below; every drill renders as a single "spot" panel */
+:root{
+  --bg:#E8EDEA; --surface:#FFFFFF; --sunk:#DCE4DF; --ink:#13201A; --muted:#566960; --line:#C9D5CE;
+  --accent:#0E5A43; --accent-ink:#FFFFFF; --brass:#B07A1E;
+  --good:#1C7F4B; --bad:#C0392F; --good-bg:#DDF1E5; --bad-bg:#F8E0DD;
+  --raise:#CF4F3D; --call:#3A9460; --four:#7B4BB0; --limp:#D39A33; --fold:#DCE4DF; --na:#EEF2F0;
+  --draw:#3A70C2; --air:#A9B6AF; --on-color:#FFFFFF;
+  --face:#FFFFFF; --s0:#1A1F1C; --s1:#D0342C; --s2:#2360C4; --s3:#1F8A46;
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1512; --surface:#16201B; --sunk:#1F2B25; --ink:#E4EBE7; --muted:#8FA398; --line:#2B3932;
+  --accent:#43BC8E; --accent-ink:#06140E; --brass:#D9A441;
+  --good:#4CC585; --bad:#F06A5E; --good-bg:#15321F; --bad-bg:#3A1C19;
+  --raise:#C9513F; --call:#35895A; --four:#8B5EC4; --limp:#BE8A2E; --fold:#22302A; --na:#18221D;
+  --draw:#4480D0; --air:#4E5D55; --face:#F3F5F4; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1512; --surface:#16201B; --sunk:#1F2B25; --ink:#E4EBE7; --muted:#8FA398; --line:#2B3932;
+  --accent:#43BC8E; --accent-ink:#06140E; --brass:#D9A441;
+  --good:#4CC585; --bad:#F06A5E; --good-bg:#15321F; --bad-bg:#3A1C19;
+  --raise:#C9513F; --call:#35895A; --four:#8B5EC4; --limp:#BE8A2E; --fold:#22302A; --na:#18221D;
+  --draw:#4480D0; --air:#4E5D55; --face:#F3F5F4; color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0}
+.sync{display:block;margin-top:2px;cursor:pointer}
+.sync.ok{color:var(--good)}.sync.warn{color:var(--brass)}.sync.err{color:var(--bad)}
+.sheet h3{margin:6px 0 0;font:800 16px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.04em}
+.sheet input[type=email],.sheet input[type=password]{font:500 15px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:0 calc(92px + env(safe-area-inset-bottom,0px))}
+header.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:12px;padding-block:12px 10px;border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-display);font-weight:850;font-stretch:72%;font-size:24px;letter-spacing:.02em;text-transform:uppercase;line-height:.95}
+.brand small{display:block;font:500 11px/1.2 var(--f-mono);letter-spacing:.02em;color:var(--muted);text-transform:none;margin-top:4px;font-stretch:100%}
+.sess{margin-left:auto;font:500 12px/1.35 var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.sess b{color:var(--ink);font-weight:600}
+.iconbtn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
+.iconbtn svg{width:20px;height:20px}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+nav.tabs button{appearance:none;border:0;background:none;padding:9px 2px 11px;font:600 11px var(--f-body);color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;position:relative}
+nav.tabs button .g{font:800 17px/1 var(--f-display);font-stretch:75%;letter-spacing:.02em}
+nav.tabs button.on{color:var(--accent)}
+nav.tabs button.on::before{content:"";position:absolute;top:0;left:22%;right:22%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+.view{display:flex;flex-direction:column;gap:14px;padding-block:14px}
+h2.vt{font:850 30px/1 var(--f-display);font-stretch:70%;text-transform:uppercase;letter-spacing:.01em;margin:0;text-wrap:balance}
+.vsub{color:var(--muted);margin:-6px 0 0;font-size:13.5px;max-width:62ch}
+.toolbar{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:12px;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.segb{appearance:none;border:0;background:none;padding:8px 12px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted);cursor:pointer;white-space:nowrap;flex:1 0 auto}
+.segb.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips .lab{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px;min-width:70px}
+.chip{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 11px;font:600 12.5px var(--f-mono);cursor:pointer}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.spot{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.timer{height:5px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.timer i{display:block;height:100%;background:var(--brass);transform-origin:left center;transform:scaleX(1)}
+.timer i.low{background:var(--bad)}
+.timer.off i{background:transparent}
+.shead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tag{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pot{font:600 14px var(--f-mono);font-variant-numeric:tabular-nums}
+.seats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.seat{border:1px solid var(--line);border-radius:9px;padding:6px 2px;text-align:center;min-width:0;background:var(--bg)}
+.seat b{display:block;font:800 14px/1.1 var(--f-display);font-stretch:80%}
+.seat span{display:block;font:500 10.5px/1.25 var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:13px}
+.seat.folded{opacity:.45}
+.seat.act span{color:var(--ink);font-weight:600}
+.seat.me{border-color:var(--ink);background:var(--ink)}
+.seat.me b,.seat.me span{color:var(--bg)}
+.hand{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{width:54px;height:76px;border-radius:9px;background:var(--face);border:1px solid #C5CEC9;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 0 rgba(0,0,0,.1);flex:none}
+.card .r{font:600 28px var(--f-mono)}
+.card .u{font-size:21px;margin-top:2px}
+.card.sm{width:40px;height:56px;border-radius:7px}
+.card.sm .r{font-size:20px}.card.sm .u{font-size:15px}
+.card.xs{width:30px;height:42px;border-radius:5px}
+.card.xs .r{font-size:15px}.card.xs .u{font-size:11px;margin-top:0}
+.su0{color:var(--s0)}.su1{color:var(--s1)}.su2{color:var(--s2)}.su3{color:var(--s3)}
+.board{display:flex;gap:6px;align-items:center}
+.boardwrap{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+.boardwrap .lbl{font:600 10px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.prompt{margin:0;font-size:15.5px;max-width:62ch}
+.prompt strong{font-weight:600}
+.q{font:700 19px/1.2 var(--f-display);font-stretch:88%;margin:0;text-wrap:balance}
+.acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px}
+.acts.two{grid-template-columns:repeat(2,1fr)}
+.act{appearance:none;border:0;border-radius:12px;min-height:54px;padding:8px 10px;font:800 17px/1.1 var(--f-display);font-stretch:85%;letter-spacing:.02em;text-transform:uppercase;cursor:pointer;background:var(--sunk);color:var(--ink);position:relative;touch-action:manipulation}
+.act kbd{position:absolute;top:5px;left:7px;font:500 9.5px var(--f-mono);opacity:.55}
+.act.a-raise{background:var(--raise);color:var(--on-color)}
+.act.a-call{background:var(--call);color:var(--on-color)}
+.act.a-four{background:var(--four);color:var(--on-color)}
+.act.a-limp{background:var(--limp);color:var(--on-color)}
+.act.plain{text-transform:none;font:600 15px/1.2 var(--f-mono);letter-spacing:0}
+.act:disabled{cursor:default}
+.acts.done .act{opacity:.35}
+.acts.done .act.picked{opacity:1;box-shadow:inset 0 0 0 3px var(--ink)}
+.acts.done .act.right{opacity:1;box-shadow:inset 0 0 0 3px var(--good)}
+.acts.done .act.right.picked{box-shadow:inset 0 0 0 3px var(--good)}
+.fb{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:12px}
+.verdict{font:850 22px/1 var(--f-display);font-stretch:75%;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.verdict.good{color:var(--good)}.verdict.bad{color:var(--bad)}
+.verdict small{font:500 12px var(--f-mono);color:var(--muted);text-transform:none;letter-spacing:0}
+.expl{margin:0;font-size:14px;color:var(--ink);max-width:66ch}
+.expl.m{color:var(--muted);font-size:13px}
+.next{appearance:none;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:800 16px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.04em;padding:14px;cursor:pointer}
+.btn2{appearance:none;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:9px 14px;font-weight:600;font-size:13.5px;cursor:pointer}
+.btn2.danger{color:var(--bad);border-color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:7px;overflow:hidden;width:100%;max-width:520px;user-select:none;-webkit-user-select:none}
+.gc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font:500 clamp(6.5px,2.05vw,10.5px)/1 var(--f-mono);background:var(--fold);color:var(--muted);letter-spacing:-.03em;overflow:hidden}
+.gc.raise{background:var(--raise);color:var(--on-color)}
+.gc.call{background:var(--call);color:var(--on-color)}
+.gc.four{background:var(--four);color:var(--on-color)}
+.gc.limp{background:var(--limp);color:var(--on-color)}
+.gc.draw{background:var(--draw);color:var(--on-color)}
+.gc.air{background:var(--air);color:var(--on-color)}
+.gc.na{background:repeating-linear-gradient(135deg,var(--na) 0 3px,var(--fold) 3px 6px);color:transparent}
+.gc.out{background:repeating-linear-gradient(135deg,var(--sunk) 0 3px,var(--air) 3px 5px);color:var(--ink)}
+.gc.miss{background:var(--limp);color:var(--on-color)}
+.gc.extra{background:var(--bad);color:var(--on-color)}
+.gc.hero{box-shadow:inset 0 0 0 2px var(--ink);font-weight:700;color:var(--ink)}
+.gc.hero.raise,.gc.hero.call,.gc.hero.four,.gc.hero.limp{box-shadow:inset 0 0 0 2px var(--ink),inset 0 0 0 4px var(--on-color);color:var(--on-color)}
+.grid.paint{touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font:500 11.5px var(--f-mono);color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px;background:var(--fold);border:1px solid var(--line)}
+.legend i.raise{background:var(--raise)}.legend i.call{background:var(--call)}.legend i.four{background:var(--four)}.legend i.limp{background:var(--limp)}.legend i.draw{background:var(--draw)}.legend i.air{background:var(--air)}.legend i.extra{background:var(--bad)}.legend i.miss{background:var(--limp)}
+.legend i.na{background:repeating-linear-gradient(135deg,var(--na) 0 2px,var(--fold) 2px 4px)}
+.legend i.out{background:repeating-linear-gradient(135deg,var(--sunk) 0 2px,var(--air) 2px 4px)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cols>*{min-width:0}
+@media (max-width:560px){.cols{grid-template-columns:1fr}}
+.bars{display:flex;flex-direction:column;gap:5px}
+.bar{display:grid;grid-template-columns:118px 1fr 70px;gap:8px;align-items:center;font:500 12px var(--f-mono);font-variant-numeric:tabular-nums}
+.bar .t{height:9px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:5px;background:var(--ink)}
+.bar .t i.nut{background:var(--four)}.bar .t i.top{background:var(--raise)}.bar .t i.weak{background:var(--limp)}.bar .t i.draw{background:var(--draw)}.bar .t i.air{background:var(--air)}
+.bar .n{text-align:right;color:var(--muted)}
+h4.sh{margin:0;font:800 14px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.04em}
+.kv{display:flex;flex-wrap:wrap;gap:8px}
+.kv div{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 12px var(--f-mono);min-width:0}
+.kv div b{display:block;font:700 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.hl{display:flex;flex-wrap:wrap;gap:6px}
+.hl span{font:500 12px var(--f-mono);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:4px 7px}
+.hl span em{font-style:normal;color:var(--muted)}
+.hrow{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.hrow:first-of-type{border-top:0}
+.hrow .hc{display:flex;gap:4px}
+.hrow .tags{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tg{appearance:none;border:1px solid var(--line);border-radius:9px;background:var(--bg);min-height:42px;font:800 13.5px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}
+.tg.on.t-Value,.tg.on.t-Raise{background:var(--raise);border-color:var(--raise);color:var(--on-color)}
+.tg.on.t-Bluff{background:var(--four);border-color:var(--four);color:var(--on-color)}
+.tg.on.t-Call{background:var(--call);border-color:var(--call);color:var(--on-color)}
+.tg.on.t-Check,.tg.on.t-Fold{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tg.ok{box-shadow:inset 0 0 0 3px var(--good)}
+.tg.no{box-shadow:inset 0 0 0 3px var(--bad)}
+.hres{grid-column:1/-1;font-size:13px;color:var(--muted);margin:0}
+.hres b{color:var(--ink)}
+.hres .ok{color:var(--good);font-weight:600}.hres .no{color:var(--bad);font-weight:600}
+.meter{position:relative;height:14px;background:var(--sunk);border-radius:7px;overflow:visible}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--call)}
+.meter b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+table.st{width:100%;border-collapse:collapse;font:500 12.5px var(--f-mono);font-variant-numeric:tabular-nums}
+table.st td,table.st th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+table.st th{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+table.st td.num{text-align:right}
+.accbar{display:inline-block;width:56px;height:7px;background:var(--sunk);border-radius:4px;overflow:hidden;vertical-align:middle;margin-right:6px}
+.accbar i{display:block;height:100%}
+.tw{overflow-x:auto}
+.misses{display:flex;flex-direction:column;gap:6px;font:500 12.5px var(--f-mono);margin:0;padding:0;list-style:none}
+.misses li{padding:6px 8px;border-left:3px solid var(--bad);background:var(--bg);border-radius:0 6px 6px 0}
+.empty{color:var(--muted);font-size:14px;margin:0}
+select,input[type=number],textarea{font:500 14px var(--f-mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:8px 10px;max-width:100%}
+textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.overlay{position:fixed;inset:0;z-index:20;background:rgba(8,14,11,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:88%;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.sheet label.f{display:grid;grid-template-columns:1fr 110px;gap:10px;align-items:center;font-size:14px}
+.sheet label.f span small{display:block;color:var(--muted);font-size:12px}
+.sheet label.f input[type=checkbox]{justify-self:end;width:22px;height:22px}
+.note{font-size:12.5px;color:var(--muted);margin:0;max-width:66ch}
+.pill{display:inline-block;font:600 11px var(--f-mono);padding:2px 7px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.pill.g{background:var(--good-bg);color:var(--good)}.pill.b{background:var(--bad-bg);color:var(--bad)}
+.qdots{display:flex;gap:4px}
+.qdots i{width:18px;height:5px;border-radius:3px;background:var(--sunk)}
+.qdots i.cur{background:var(--ink)}.qdots i.g{background:var(--good)}.qdots i.b{background:var(--bad)}
+.blk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.blk .act{display:flex;gap:4px;justify-content:center;align-items:center;min-height:74px;background:var(--bg);border:1px solid var(--line)}
+.blk .act.picked{box-shadow:inset 0 0 0 3px var(--ink)}
+.blk .act.right{box-shadow:inset 0 0 0 3px var(--good)}
+.busy{font:500 12px var(--f-mono);color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="hud">
+    <div class="brand">Leak Lab<small>NL50 · $0.25/$0.50 · 6-max · 100bb</small></div>
+    <div class="sess" id="sess"></div>
+    <button class="iconbtn" id="openSettings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+  <main>
+    <section class="view" id="v-preflop"></section>
+    <section class="view" id="v-reading" hidden></section>
+    <section class="view" id="v-math" hidden></section>
+    <section class="view" id="v-postflop" hidden></section>
+    <section class="view" id="v-charts" hidden></section>
+    <section class="view" id="v-stats" hidden></section>
+  </main>
+</div>
+<nav class="tabs"><div class="in">
+  <button data-tab="preflop" class="on"><span class="g">PRE</span>Preflop</button>
+  <button data-tab="reading"><span class="g">RNG</span>Ranges</button>
+  <button data-tab="math"><span class="g">%</span>Math</button>
+  <button data-tab="postflop"><span class="g">FLOP</span>Postflop</button>
+  <button data-tab="charts"><span class="g">13²</span>Charts</button>
+  <button data-tab="stats"><span class="g">LEAK</span>Leaks</button>
+</div></nav>
+<div id="overlay" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// ================= core utils =================
+const R='23456789TJQKA', SYM=['♠','♥','♦','♣'];
+const POS=['UTG','HJ','CO','BTN','SB','BB'];
+const PO={SB:0,BB:1,UTG:2,HJ:3,CO:4,BTN:5};
+const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const money=x=>'$'+(Math.round(x*100)/100).toFixed(2);
+const pct=x=>Math.round(x*100)+'%';
+const pct1=x=>(Math.round(x*1000)/10)+'%';
+const r05=x=>Math.round(x*20)/20;
+const $=s=>document.querySelector(s);
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+let CFG=Object.assign({},DEF_CFG,load('ll_cfg',{}));
+
+// ================= hand classes & ranges =================
+const CLS=[];
+for(let i=0;i<13;i++)for(let j=0;j<13;j++){const hi=12-Math.min(i,j),lo=12-Math.max(i,j);CLS.push(i===j?R[hi]+R[hi]:R[hi]+R[lo]+(i<j?'s':'o'))}
+const CLSI=Object.fromEntries(CLS.map((c,i)=>[c,i]));
+function neighbors(c){const k=CLSI[c],i=Math.floor(k/13),j=k%13,o=[];[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{const x=i+a,y=j+b;if(x>=0&&x<13&&y>=0&&y<13)o.push(CLS[x*13+y])});return o}
+const nCombos=c=>c.length===2?6:c[2]==='s'?4:12;
+const setCombos=s=>{let n=0;s.forEach(c=>n+=nCombos(c));return n};
+function comboCls(a,b){let r1=a>>2,r2=b>>2;if(r1<r2)[r1,r2]=[r2,r1];if(r1===r2)return R[r1]+R[r1];return R[r1]+R[r2]+((a&3)===(b&3)?'s':'o')}
+function classCombos(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]),o=[];
+  if(h===l){for(let a=0;a<4;a++)for(let b=a+1;b<4;b++)o.push([h*4+a,h*4+b])}
+  else if(c[2]==='s'){for(let s=0;s<4;s++)o.push([h*4+s,l*4+s])}
+  else{for(let a=0;a<4;a++)for(let b=0;b<4;b++)if(a!==b)o.push([h*4+a,l*4+b])}
+  return o}
+function rangeCombos(set,dead){const o=[];for(const c of set)for(const cb of classCombos(c))if(!dead.has(cb[0])&&!dead.has(cb[1]))o.push({cls:c,cards:cb});return o}
+
+function parseRange(str){
+  const set=new Set();
+  for(let tok of String(str).split(',')){
+    tok=tok.trim();if(tok.length<2)continue;
+    const plus=tok.endsWith('+');if(plus)tok=tok.slice(0,-1);
+    if(tok.includes('-')){
+      const[a,b]=tok.split('-').map(s=>s.trim());
+      const h1=R.indexOf(a[0]),l1=R.indexOf(a[1]),h2=R.indexOf(b[0]),l2=R.indexOf(b[1]);
+      if(h1<0||l1<0||h2<0||l2<0)continue;
+      if(h1===l1){for(let r=Math.min(h1,h2);r<=Math.max(h1,h2);r++)set.add(R[r]+R[r]);continue}
+      const t=a[2]||'';for(const ty of t?[t]:['s','o'])for(let r=Math.min(l1,l2);r<=Math.max(l1,l2);r++)if(r!==h1)set.add(R[h1]+R[r]+ty);
+      continue}
+    let h=R.indexOf(tok[0]),l=R.indexOf(tok[1]);const t=tok[2]||'';
+    if(h<0||l<0)continue;
+    if(h===l){if(plus){for(let r=h;r<13;r++)set.add(R[r]+R[r])}else set.add(R[h]+R[h]);continue}
+    if(l>h)[h,l]=[l,h];
+    for(const ty of t?[t]:['s','o']){if(plus){for(let r=l;r<h;r++)set.add(R[h]+R[r]+ty)}else set.add(R[h]+R[l]+ty)}
+  }
+  return set}
+
+const DEF_RANGES={
+ 'rfi.UTG':'22+, A2s+, K9s+, Q9s+, J9s+, T9s, 98s, 87s, 76s, 65s, ATo+, KJo+, QJo',
+ 'rfi.HJ':'22+, A2s+, K7s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, 54s, A9o+, KTo+, QTo+, JTo',
+ 'rfi.CO':'22+, A2s+, K4s+, Q7s+, J7s+, T7s+, 96s+, 86s+, 75s+, 64s+, 54s, A7o+, A5o, K9o+, Q9o+, J9o+, T9o',
+ 'rfi.BTN':'22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
+ 'rfi.SB':'22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o+, K8o+, Q9o+, J9o+, T9o',
+ '3bet_vs.UTG':'QQ+, AKs, AKo, A5s-A4s',
+ '3bet_vs.HJ':'JJ+, AQs+, AKo, KQs, A5s-A4s',
+ '3bet_vs.CO':'TT+, AJs+, KQs, KJs, QJs, AQo+, A5s-A3s',
+ '3bet_vs.BTN':'99+, ATs+, KTs+, QTs+, JTs, AJo+, KQo, A5s-A2s, 76s, 65s',
+ '3bet_vs.SB':'88+, A8s+, KTs+, QTs+, JTs, T9s, ATo+, KJo+, A5s-A2s, 98s, 87s',
+ 'flat.vsUTG':'22-JJ, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, AQo',
+ 'flat.vsHJ':'22-TT, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo-AQo, KQo',
+ 'flat.vsCO':'22-99, A9s-AJs, K9s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, ATo-AQo, KJo+, QJo',
+ 'flat.SBvsBTN':'22-88, A6s-A9s, KTs-KJs, QTs+, JTs',
+ 'bbdef.vsUTG':'22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, AJo+, KJo+, QJo',
+ 'bbdef.vsHJ':'22+, A2s+, K6s+, Q8s+, J8s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, ATo+, KTo+, QTo+, JTo',
+ 'bbdef.vsCO':'22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A8o+, K9o+, Q9o+, J9o+, T9o, 98o',
+ 'bbdef.vsBTN':'22+, A2s+, K2s+, Q2s+, J4s+, T6s+, 95s+, 84s+, 74s+, 63s+, 52s+, 42s+, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
+ 'bbdef.vsSB':'22+, A2s+, K2s+, Q2s+, J2s+, T5s+, 95s+, 84s+, 73s+, 63s+, 52s+, 42s+, 32s, A2o+, K5o+, Q7o+, J7o+, T7o+, 97o+, 86o+, 76o, 65o',
+ '4bet.EP':'QQ+, AKs, AKo',
+ '4bet.LP':'QQ+, AKs, AKo, A5s',
+ 'call3b.IP.EP':'77-JJ, AJs-AQs, KQs, KJs, QJs, JTs, AQo',
+ 'call3b.IP.LP':'22-JJ, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo-AQo, KQo',
+ 'call3b.OOP':'88-JJ, AJs-AQs, KQs, QJs, JTs, AQo',
+ 'call3b.addMid':'22-66, A2s-A9s, K9s-KJs, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, ATo-AJo, KJo+, QJo',
+ 'call3b.addMin':'22+, A2s+, K2s+, Q2s+, J2s+, T2s+, 92s+, 82s+, 72s+, 62s+, 52s+, 42s+, 32s, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
+ 'iso.MP':'55+, A9s+, A5s, KTs+, QTs+, JTs, ATo+, KJo+',
+ 'limp.MP':'22-44, A2s-A8s, 98s, 87s, 76s, 65s',
+ 'iso.LP1':'22+, A2s+, K9s+, Q9s+, J9s+, T9s, 98s, A9o+, KTo+, QJo',
+ 'limp.LP1':'K5s-K8s, Q8s, J8s, T8s, 97s, 87s, 76s, 65s, 54s',
+ 'iso.LP2':'66+, A9s+, KTs+, QTs+, JTs, ATo+, KQo',
+ 'limp.LP2':'22-55, A2s-A8s, K6s-K9s, Q9s, J9s, T8s+, 97s+, 86s+, 75s+, 64s+, 54s',
+ 'iso.SB':'77+, A9s+, KTs+, QJs, AJo+, KQo',
+ 'limp.SB':'22-66, A2s-A8s, K5s-K9s, Q8s+, J8s+, T8s+, 97s+, 86s+, 75s+, 64s+, 54s, ATo, KJo, QJo',
+ 'iso.BB1':'88+, ATs+, KJs+, AJo+, KQo',
+ 'iso.BB2':'TT+, AQs+, AQo+, KQs',
+ 'squeeze.vsEP':'QQ+, AKs, AKo',
+ 'squeeze.vsLP':'JJ+, AQs+, AKo, A5s-A4s, KQs',
+ 'sqcall.IP':'22-JJ, A8s-AQs, KTs+, QTs+, JTs, T9s, 98s, 87s, 76s, AQo',
+ 'sqcall.SB':'22-JJ, ATs-AQs, KQs, QJs, JTs, T9s, AQo',
+ 'sqcall.BB':'22-JJ, A2s-AQs, K6s+, Q8s+, J8s+, T7s+, 96s+, 85s+, 75s+, 64s+, 53s+, 43s, ATo-AQo, KTo+, QTo+, JTo',
+ 'fish.limpcall':'22-TT, A2s-AJs, K2s+, Q6s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o-AJo, K9o+, Q9o+, J9o+, T9o, 98o'
+};
+const RANGE_LABELS={
+ 'rfi.UTG':'Open · UTG','rfi.HJ':'Open · HJ','rfi.CO':'Open · CO','rfi.BTN':'Open · BTN','rfi.SB':'Open · SB',
+ '3bet_vs.UTG':'3-bet vs UTG open','3bet_vs.HJ':'3-bet vs HJ open','3bet_vs.CO':'3-bet vs CO open','3bet_vs.BTN':'3-bet vs BTN open','3bet_vs.SB':'BB 3-bet vs SB open',
+ 'flat.vsUTG':'Cold-call IP vs UTG','flat.vsHJ':'Cold-call IP vs HJ','flat.vsCO':'BTN cold-call vs CO','flat.SBvsBTN':'SB flat vs BTN',
+ 'bbdef.vsUTG':'BB defend vs UTG (incl. 3-bets)','bbdef.vsHJ':'BB defend vs HJ (incl. 3-bets)','bbdef.vsCO':'BB defend vs CO (incl. 3-bets)','bbdef.vsBTN':'BB defend vs BTN (incl. 3-bets)','bbdef.vsSB':'BB defend vs SB (incl. 3-bets)',
+ '4bet.EP':'4-bet · UTG/HJ opener','4bet.LP':'4-bet · CO/BTN/SB opener',
+ 'call3b.IP.EP':'Call 3-bet · UTG/HJ, in position','call3b.IP.LP':'Call 3-bet · CO/BTN, in position','call3b.OOP':'Call 3-bet · out of position',
+ 'call3b.addMid':'Extra calls vs small 3-bet (≤2.5x)','call3b.addMin':'Extra calls vs min 3-bet (≤2x)',
+ 'iso.MP':'Iso-raise · HJ vs 1 limper','limp.MP':'Over-limp · HJ','iso.LP1':'Iso-raise · CO/BTN vs 1 limper','limp.LP1':'Over-limp · CO/BTN vs 1',
+ 'iso.LP2':'Iso-raise · CO/BTN vs 2+ limpers','limp.LP2':'Over-limp · CO/BTN vs 2+','iso.SB':'Iso-raise · SB vs limpers','limp.SB':'Complete · SB vs limpers',
+ 'iso.BB1':'Raise · BB vs 1 limper','iso.BB2':'Raise · BB vs 2+ limpers',
+ 'squeeze.vsEP':'Squeeze vs UTG/HJ open + caller','squeeze.vsLP':'Squeeze vs CO/BTN open + caller','sqcall.IP':'Overcall IP (open + caller)','sqcall.SB':'Overcall SB (open + caller)','sqcall.BB':'Overcall BB (open + caller)',
+ 'fish.limpcall':'Fish limp-call range (model)'
+};
+let customRanges=load('ll_ranges',{});
+const _rc={};
+function rng(key){const s=customRanges[key]??DEF_RANGES[key];if(!_rc[key]||_rc[key].s!==s)_rc[key]={s,set:parseRange(s)};return _rc[key].set}
+const minus=(a,b)=>new Set([...a].filter(x=>!b.has(x)));
+const inter=(a,b)=>new Set([...a].filter(x=>b.has(x)));
+const union=(...ss)=>{const o=new Set();ss.forEach(s=>s.forEach(x=>o.add(x)));return o};
+
+// ================= evaluator =================
+function straightHigh(m){for(let h=12;h>=4;h--){const w=0x1F<<(h-4);if((m&w)===w)return h}return (m&0x100F)===0x100F?3:-1}
+function evalCards(cs){
+  const rc=[0,0,0,0,0,0,0,0,0,0,0,0,0],sc=[0,0,0,0],sm=[0,0,0,0];let mask=0;
+  for(let i=0;i<cs.length;i++){const c=cs[i],r=c>>2,s=c&3;rc[r]++;sc[s]++;sm[s]|=1<<r;mask|=1<<r}
+  let fs=-1;for(let s=0;s<4;s++)if(sc[s]>=5)fs=s;
+  if(fs>=0){const sf=straightHigh(sm[fs]);if(sf>=0)return(8<<20)|sf}
+  let quad=-1;const tr=[],pr=[],sg=[];
+  for(let r=12;r>=0;r--){const n=rc[r];if(n===4)quad=r;else if(n===3)tr.push(r);else if(n===2)pr.push(r);else if(n===1)sg.push(r)}
+  if(quad>=0){let k=0;for(let r=12;r>=0;r--)if(r!==quad&&rc[r]){k=r;break}return(7<<20)|(quad<<4)|k}
+  if(tr.length&&(tr.length>1||pr.length)){const p=tr.length>1?Math.max(tr[1],pr.length?pr[0]:-1):pr[0];return(6<<20)|(tr[0]<<4)|p}
+  if(fs>=0){let v=0,n=0;for(let r=12;r>=0&&n<5;r--)if(sm[fs]>>r&1){v=v*16+r;n++}return(5<<20)|v}
+  const st=straightHigh(mask);if(st>=0)return(4<<20)|st;
+  if(tr.length)return(3<<20)|(tr[0]<<8)|((sg[0]||0)<<4)|(sg[1]||0);
+  if(pr.length>=2){let k=0;for(let r=12;r>=0;r--)if(r!==pr[0]&&r!==pr[1]&&rc[r]){k=r;break}return(2<<20)|(pr[0]<<8)|(pr[1]<<4)|k}
+  if(pr.length===1)return(1<<20)|(pr[0]<<12)|((sg[0]||0)<<8)|((sg[1]||0)<<4)|(sg[2]||0);
+  return((sg[0]||0)<<16)|((sg[1]||0)<<12)|((sg[2]||0)<<8)|((sg[3]||0)<<4)|(sg[4]||0)}
+
+function drawFeats(h,board){
+  const all=h.concat(board),sc=[0,0,0,0];all.forEach(c=>sc[c&3]++);
+  let fd=false,bdfd=false;
+  for(let s=0;s<4;s++){if((h[0]&3)!==s&&(h[1]&3)!==s)continue;if(sc[s]===4)fd=true;else if(sc[s]===3&&board.length===3)bdfd=true}
+  let mask=0;all.forEach(c=>mask|=1<<(c>>2));let sr=0;
+  if(straightHigh(mask)<0)for(let r=0;r<13;r++){if(mask>>r&1)continue;if(straightHigh(mask|1<<r)>=0)sr++}
+  const top=Math.max(...board.map(c=>c>>2));const overs=[h[0]>>2,h[1]>>2].filter(r=>r>top).length;
+  return{fd,bdfd,oesd:sr>=2,gut:sr===1,overs}}
+const CATL={nut:'Straight / flush+',set:'Set',two:'Two pair',trips:'Trips',over:'Overpair',top:'Top pair',weak:'Weaker pair',draw:'Strong draw',wdraw:'Weak draw / overs',air:'Air'};
+const CATCOL={nut:'four',set:'four',two:'four',trips:'four',over:'raise',top:'raise',weak:'limp',draw:'draw',wdraw:'draw',air:'air'};
+const CATBAR={nut:'nut',set:'nut',two:'nut',trips:'nut',over:'top',top:'top',weak:'weak',draw:'draw',wdraw:'draw',air:'air'};
+const CATORDER=['nut','set','two','trips','over','top','weak','draw','wdraw','air'];
+const NUTK=['nut','set','two','trips'];
+function classify(h,board){
+  const cat=evalCards(h.concat(board))>>20,f=drawFeats(h,board);
+  const h0=h[0]>>2,h1=h[1]>>2,br=board.map(c=>c>>2),top=Math.max(...br),bs=new Set(br),pocket=h0===h1;
+  let k;
+  if(cat>=4)k='nut';
+  else if(cat===3)k=pocket?'set':'trips';
+  else{const m0=bs.has(h0),m1=bs.has(h1);
+    if(!pocket&&m0&&m1)k='two';
+    else if(pocket)k=h0>top?'over':'weak';
+    else if(m0||m1){const m=m0?h0:h1;k=m===top?'top':'weak';f.kicker=m0?h1:h0}
+    else k=(f.fd||f.oesd)?'draw':(f.gut||f.overs===2)?'wdraw':'air'}
+  return{k,f}}
+function drawName(f){return f.fd&&f.oesd?'combo draw':f.fd?'flush draw':f.oesd?'open-ender':f.gut?'gutshot':(f.bdfd&&f.overs)?'backdoor flush + overcard':f.overs===2?'two overcards':f.bdfd?'backdoor flush draw':'no draw'}
+function classifyRange(set,dead,board){return rangeCombos(set,dead).map(x=>Object.assign(x,classify(x.cards,board)))}
+
+function mcEquity(hero,board,vr,iters){
+  const vs=vr.filter(v=>!hero.includes(v.cards[0])&&!hero.includes(v.cards[1]));
+  if(!vs.length)return 0.5;
+  const dead=new Set(hero.concat(board)),deck=[];for(let c=0;c<52;c++)if(!dead.has(c))deck.push(c);
+  const need=5-board.length;let w=0;
+  const hb=hero.concat(board),vb=[0,0].concat(board);
+  for(let i=0;i<iters;i++){const v=vs[rnd(vs.length)].cards;vb[0]=v[0];vb[1]=v[1];
+    const run=[];while(run.length<need){const c=deck[rnd(deck.length)];if(c===v[0]||c===v[1]||run.includes(c))continue;run.push(c)}
+    const a=evalCards(hb.concat(run)),b=evalCards(vb.concat(run));w+=a>b?1:a===b?.5:0}
+  return w/iters}
+function rangeEq(hr,vr,board,iters){
+  const dead=new Set(board),deck=[];for(let c=0;c<52;c++)if(!dead.has(c))deck.push(c);
+  let w=0,n=0,guard=0;
+  while(n<iters&&guard<iters*5){guard++;const h=hr[rnd(hr.length)].cards,v=vr[rnd(vr.length)].cards;
+    if(h[0]===v[0]||h[0]===v[1]||h[1]===v[0]||h[1]===v[1])continue;
+    const run=[];while(run.length<2){const c=deck[rnd(deck.length)];if(c===h[0]||c===h[1]||c===v[0]||c===v[1]||run.includes(c))continue;run.push(c)}
+    const bb=board.concat(run),a=evalCards(h.concat(bb)),b=evalCards(v.concat(bb));w+=a>b?1:a===b?.5:0;n++}
+  return n?w/n:.5}
+function dealFlop(dead){for(;;){const d=shuffle([...Array(52).keys()].filter(c=>!dead.has(c)));const b=d.slice(0,3);if((b[0]>>2)===(b[1]>>2)&&(b[1]>>2)===(b[2]>>2))continue;return b.sort((x,y)=>y-x)}}
+
+// ================= rendering helpers =================
+function cardHTML(c,sz=''){return `<div class="card ${sz} su${c&3}" aria-label="${R[c>>2]}${'shdc'[c&3]}"><span class="r">${R[c>>2]==='T'?'10':R[c>>2]}</span><span class="u">${SYM[c&3]}</span></div>`}
+function cardsHTML(cs,sz=''){return cs.map(c=>cardHTML(c,sz)).join('')}
+function cardTxt(c){return `<span class="su${c&3}">${R[c>>2]}${SYM[c&3]}</span>`}
+function gridHTML(colorFn,heroCls,extra=''){let s=`<div class="grid" ${extra}>`;for(const c of CLS){const col=colorFn(c)||'';s+=`<div class="gc ${col}${c===heroCls?' hero':''}" data-c="${c}">${c}</div>`}return s+'</div>'}
+function legendHTML(items){return `<div class="legend">${items.map(([c,l])=>`<span><i class="${c}"></i>${l}</span>`).join('')}</div>`}
+function chip(label,on,attr,val){return `<button class="chip ${on?'on':''}" data-${attr}="${val??label}">${label}</button>`}
+function seg(items,cur,attr){return `<div class="seg">${items.map(([id,l])=>`<button class="segb ${cur===id?'on':''}" data-${attr}="${id}">${l}</button>`).join('')}</div>`}
+function timerHTML(){return `<div class="timer ${CFG.timerOn?'':'off'}"><i></i></div>`}
+function dots(n,cur,res){let s='<div class="qdots">';for(let i=0;i<n;i++)s+=`<i class="${res[i]===true?'g':res[i]===false?'b':i===cur?'cur':''}"></i>`;return s+'</div>'}
+
+const Timer={raf:0,t0:0,cb:null,
+  start(el,sec,cb){this.stop();this.t0=performance.now();if(!el)return;
+    if(!CFG.timerOn||!sec){el.style.transform='scaleX(1)';return}
+    const dur=sec*1000;this.cb=cb;
+    const tick=()=>{const e=performance.now()-this.t0,f=Math.max(0,1-e/dur);el.style.transform=`scaleX(${f})`;el.classList.toggle('low',f<.3);
+      if(e>=dur){this.raf=0;const c=this.cb;this.cb=null;c&&c();return}this.raf=requestAnimationFrame(tick)};
+    this.raf=requestAnimationFrame(tick)},
+  stop(){if(this.raf)cancelAnimationFrame(this.raf);this.raf=0;this.cb=null;return performance.now()-this.t0}};
+
+// ================= stats =================
+let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]);
+const sess={n:0,ok:0,streak:0,best:0};
+function record(key,ok,ms,drill,miss){
+  const s=STATS[key]||(STATS[key]={n:0,ok:0,ms:0,drill});s.n++;if(ok)s.ok++;s.ms+=Math.min(ms||0,120000);s.drill=drill;s.last=Date.now();
+  const t=Date.now(),m=(!ok&&miss)?{t,k:key,m:miss}:null;
+  if(m){MISSES.unshift(m);MISSES=MISSES.slice(0,40)}
+  sess.n++;if(ok){sess.ok++;sess.streak++;sess.best=Math.max(sess.best,sess.streak)}else sess.streak=0;
+  save('ll_stats',STATS);save('ll_misses',MISSES);hud();
+  Cloud.log(key,ok,Math.round(Math.min(ms||0,120000)),drill,m)}
+function hud(){$('#sess').innerHTML=`<b>${sess.ok}/${sess.n}</b> ${sess.n?pct(sess.ok/sess.n):''}<br>streak <b>${sess.streak}</b> · best ${sess.best}<span class="sync ${Cloud.cls()}" id="sync-badge">${Cloud.label()}</span>`}
+
+// ================= cloud sync (Firebase) =================
+// Answers made while signed out (or before this version) wait in PENDING and are pushed as increments on sign-in.
+let PENDING=load('ll_pending',null);
+if(!PENDING){PENDING={stats:JSON.parse(JSON.stringify(STATS)),misses:MISSES.slice()};save('ll_pending',PENDING)}
+const clean=o=>o==null?null:JSON.parse(JSON.stringify(o));
+const statId=k=>encodeURIComponent(k).replace(/\./g,'%2E');
+const Cloud={on:false,user:null,db:null,state:'off',err:'',
+  init(){
+    const c=window.FIREBASE_CONFIG;
+    if(!window.firebase||!c||!c.apiKey||/^PASTE/.test(c.apiKey)){this.state='off';hud();return}
+    try{firebase.initializeApp(c);this.db=firebase.firestore();this.db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}
+    catch(e){this.state='error';this.err=e.message;hud();return}
+    this.on=true;this.state='signedout';hud();
+    firebase.auth().onAuthStateChanged(u=>{this.user=u;if(u)this.pull();else{this.state='signedout';hud()}if(!$('#overlay').hidden)openSettings()});
+    window.addEventListener('online',()=>hud());window.addEventListener('offline',()=>hud());
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&this.user)this.pull(true)})},
+  label(){if(!navigator.onLine&&this.user)return '☁ offline · will sync';return{off:'local only',signedout:'☁ not signed in',syncing:'☁ syncing…',synced:'☁ synced',error:'☁ sync error'}[this.state]||''},
+  cls(){return this.state==='synced'?'ok':this.state==='error'?'err':this.state==='off'?'':'warn'},
+  ref(){return this.db.collection('users').doc(this.user.uid)},
+  inc(n){return firebase.firestore.FieldValue.increment(n)},
+  log(key,ok,ms,drill,miss){
+    if(this.user){
+      const r=this.ref();
+      r.collection('stats').doc(statId(key)).set({k:key,n:this.inc(1),ok:this.inc(ok?1:0),ms:this.inc(ms),drill:clean(drill),last:Date.now()},{merge:true}).catch(e=>this.fail(e));
+      if(miss)r.collection('misses').add(miss).catch(e=>this.fail(e));
+    }else{
+      const s=PENDING.stats[key]||(PENDING.stats[key]={n:0,ok:0,ms:0});s.n++;if(ok)s.ok++;s.ms+=ms;s.drill=clean(drill);s.last=Date.now();
+      if(miss)PENDING.misses.unshift(miss);PENDING.misses=PENDING.misses.slice(0,40);save('ll_pending',PENDING)}},
+  fail(e){this.state='error';this.err=e.message||String(e);hud()},
+  async flush(){
+    const keys=Object.keys(PENDING.stats),ms=PENDING.misses;if(!keys.length&&!ms.length)return;
+    const r=this.ref(),ops=[];
+    keys.forEach(k=>{const s=PENDING.stats[k];ops.push(b=>b.set(r.collection('stats').doc(statId(k)),{k,n:this.inc(s.n),ok:this.inc(s.ok),ms:this.inc(Math.round(s.ms||0)),drill:clean(s.drill),last:s.last||Date.now()},{merge:true}))});
+    ms.forEach(m=>ops.push(b=>b.set(r.collection('misses').doc(),clean(m))));
+    for(let i=0;i<ops.length;i+=400){const b=this.db.batch();ops.slice(i,i+400).forEach(f=>f(b));await b.commit()}
+    PENDING={stats:{},misses:[]};save('ll_pending',PENDING)},
+  async pull(quiet){
+    if(!quiet){this.state='syncing';hud()}
+    try{
+      await this.flush();
+      const r=this.ref();
+      const[st,ms,ud]=await Promise.all([r.collection('stats').get(),r.collection('misses').orderBy('t','desc').limit(40).get(),r.get()]);
+      STATS={};st.forEach(d=>{const v=d.data();if(v.k)STATS[v.k]={n:v.n||0,ok:v.ok||0,ms:v.ms||0,drill:v.drill,last:v.last}});
+      MISSES=[];ms.forEach(d=>MISSES.push(d.data()));
+      const u=ud.data();
+      if(u){if(u.cfg)CFG=Object.assign({},DEF_CFG,u.cfg);if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
+      else await this.saveUser();
+      save('ll_stats',STATS);save('ll_misses',MISSES);this.state='synced';this.err='';
+    }catch(e){this.state='error';this.err=e.message||String(e)}
+    hud();if(cur==='stats'||cur==='charts')RENDER[cur]()},
+  saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges}).catch(e=>this.fail(e))},
+  async resetStats(){
+    if(!this.user)return;const r=this.ref();
+    for(const col of['stats','misses']){const snap=await r.collection(col).get();const docs=snap.docs;
+      for(let i=0;i<docs.length;i+=400){const b=this.db.batch();docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit()}}}};
+async function authAct(kind){
+  const msg=$('#auth-msg'),em=($('#auth-email')||{}).value,pw=($('#auth-pw')||{}).value;
+  const say=t=>{if(msg)msg.textContent=t};
+  try{
+    if(kind==='out'){await firebase.auth().signOut();return}
+    if(!em){say('Enter your email first.');return}
+    if(kind==='reset'){await firebase.auth().sendPasswordResetEmail(em);say('Password reset email sent.');return}
+    if(!pw||pw.length<6){say('Password needs at least 6 characters.');return}
+    say(kind==='new'?'Creating account…':'Signing in…');
+    if(kind==='new')await firebase.auth().createUserWithEmailAndPassword(em,pw);
+    else await firebase.auth().signInWithEmailAndPassword(em,pw);
+  }catch(e){say(({'auth/invalid-credential':'Email or password is wrong.','auth/wrong-password':'Email or password is wrong.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/invalid-email':'That email address looks wrong.','auth/network-request-failed':'No connection. Try again when online.','auth/operation-not-allowed':'Email/password sign-in is off in Firebase. Turn it on under Authentication → Sign-in method.'})[e.code]||e.message)}}
+
+// ================= preflop =================
+const COLOR={Raise:'raise','4-Bet':'four','3-Bet':'four',Call:'call',Limp:'limp',Complete:'limp',Fold:'',Check:''};
+const PF_SUBS=[['rfi','RFI'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller']];
+const PF_HEROES={rfi:['UTG','HJ','CO','BTN','SB'],'3bet':['UTG','HJ','CO','BTN','SB'],limp:['HJ','CO','BTN','SB','BB'],squeeze:['CO','BTN','SB','BB']};
+const pf={sub:'rfi',pos:{},vill:new Set(['HJ','CO','BTN','SB','BB']),q:null,last:null};
+Object.keys(PF_HEROES).forEach(k=>pf.pos[k]=new Set(PF_HEROES[k]));
+const after=h=>POS.slice(POS.indexOf(h)+1);
+const isIP=(a,b)=>PO[a]>PO[b];
+const EP=p=>p==='UTG'||p==='HJ';
+const fourBetSet=o=>rng(EP(o)?'4bet.EP':'4bet.LP');
+function call3bSet(opener,tb,ratio){
+  const ip=isIP(opener,tb);let s=rng(ip?(EP(opener)?'call3b.IP.EP':'call3b.IP.LP'):'call3b.OOP');
+  if(ratio!=null){if(ratio<=2.5)s=union(s,rng('call3b.addMid'));if(ratio<=2.0)s=union(s,rng('call3b.addMin'))}
+  return minus(inter(s,rng('rfi.'+opener)),fourBetSet(opener))}
+function villFlatSet(opener,v){const s=v==='BB'?rng('bbdef.vs'+opener):v==='SB'?rng('flat.SBvsBTN'):rng('flat.vs'+opener);return minus(s,rng('3bet_vs.'+opener))}
+const deadBlinds=(a,b)=>(a!=='SB'&&b!=='SB'?.25:0)+(a!=='BB'&&b!=='BB'?.5:0);
+
+function pfBuild(){
+  const sub=pf.sub,heroes=[...pf.pos[sub]];if(!heroes.length)return null;
+  const open=CFG.openSize;
+  for(let t=0;t<80;t++){
+    const H=pick(heroes),q={sub,H,seats:{},pot:.75,opts:[],pool:CLS,key:'',expl:[]};
+    POS.forEach(p=>q.seats[p]='');
+    const foldBefore=p=>POS.slice(0,POS.indexOf(p)).forEach(x=>{if(!q.seats[x])q.seats[x]='Fold'});
+    if(sub==='rfi'){
+      const set=rng('rfi.'+H);q.ansFn=c=>set.has(c)?'Raise':'Fold';q.opts=['Raise','Fold'];foldBefore(H);
+      q.prompt=`Folded to you in the <strong>${H}</strong>. Open to ${money(open)} or fold?`;
+      q.key=`Preflop · RFI · ${H}`;q.tag='Raise first in';
+      q.expl.push(`${H} opens ${pct(setCombos(set)/1326)} of hands (${setCombos(set)} combos).`);
+      if(H==='SB')q.expl.push('SB is raise-or-fold here. Raise bigger (3x) because you play the hand out of position.');
+      q.legend=[['raise','Open'],['','Fold']];
+    }else if(sub==='3bet'){
+      const vills=after(H).filter(v=>pf.vill.has(v));if(!vills.length)continue;const V=pick(vills);
+      const minC=Math.max(Math.round(CFG.tbMin*100),Math.round((2*open-.5)*100)),maxC=Math.max(minC,Math.round(CFG.tbMax*100)),sizes=[];
+      for(let c=minC;c<=maxC;c+=25)sizes.push(c/100);
+      const T=pick(sizes),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rng('rfi.'+H);
+      q.ansFn=c=>!rfi.has(c)?null:four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';
+      q.pool=[...rfi];q.opts=['4-Bet','Call','Fold'];foldBefore(H);
+      q.seats[H]='Open '+money(open);after(H).forEach(p=>q.seats[p]=p===V?'3-Bet '+money(T):(POS.indexOf(p)<POS.indexOf(V)?'Fold':''));
+      const dead=deadBlinds(H,V),toCall=T-open,final=2*T+dead,need=toCall/final,ip=isIP(H,V);
+      q.pot=open+T+dead;q.toCall=toCall;
+      q.prompt=`You open <strong>${H}</strong> to ${money(open)}. <strong>${V}</strong> 3-bets to ${money(T)} (${ratio.toFixed(2).replace(/0$/,'')}x). You'll be ${ip?'in position':'out of position'}.`;
+      q.key=`Preflop · vs 3-bet · ${H} vs ${V}`;q.tag='Facing a 3-bet';
+      q.expl.push(`Price: call ${money(toCall)} to play a ${money(final)} pot, so you need ${pct(need)} equity before implied odds.`);
+      q.expl.push(ratio<=2?'Min-3-bet: continue with your whole opening range. Folding anything here is a leak.':ratio<=2.5?'Small 3-bet: add set-mining pairs, suited aces and suited connectors to your calls.':'Standard size: call only hands that play well in a 3-bet pot; keep 4-bets to value plus A5s from late position.');
+      q.expl.push(`NL50 read: ${EP(V)||V==='HJ'?'early-position 3-bets are very strong':'blind 3-bets vs late opens are wider but still value-leaning'} at this stake. Against a nit, fold the bottom of the calling range.`);
+      q.legend=[['four','4-Bet'],['call','Call'],['','Fold'],['na','Not in your open']];
+    }else if(sub==='limp'){
+      const hi=POS.indexOf(H);if(hi<1)continue;const before=POS.slice(0,hi);
+      const n=1+rnd(Math.min(3,before.length));const L=shuffle(before).slice(0,n).sort((a,b)=>POS.indexOf(a)-POS.indexOf(b));
+      let iso,lp;
+      if(H==='BB'){iso=rng(n>=2?'iso.BB2':'iso.BB1');lp=null;q.opts=['Raise','Check']}
+      else if(H==='SB'){iso=rng('iso.SB');lp=rng('limp.SB');q.opts=['Raise','Complete','Fold']}
+      else if(H==='HJ'){iso=rng('iso.MP');lp=rng('limp.MP');q.opts=['Raise','Limp','Fold']}
+      else{iso=rng(n>=2?'iso.LP2':'iso.LP1');lp=rng(n>=2?'limp.LP2':'limp.LP1');q.opts=['Raise','Limp','Fold']}
+      q.ansFn=c=>iso.has(c)?'Raise':H==='BB'?'Check':lp.has(c)?(H==='SB'?'Complete':'Limp'):'Fold';
+      L.forEach(p=>q.seats[p]='Limp');foldBefore(H);
+      const oop=H==='SB'||H==='BB',size=2+.5*n+(oop?.5:0);
+      q.pot=.75+.5*n;q.toCall=H==='BB'?0:H==='SB'?.25:.5;
+      q.prompt=`${n} limper${n>1?'s':''} (${L.join(', ')}). You're in the <strong>${H}</strong>. Iso size would be ${money(size)}.`;
+      q.key=`Preflop · Limpers · ${H} vs ${n>=2?'2+':'1'}`;q.tag='Facing limpers';
+      q.expl.push(`Iso sizing: 4bb + 1bb per extra limper${oop?' + 1bb out of position':''} = ${money(size)}.`);
+      q.expl.push(n>=2?'Multiple limpers: raise a tighter, value-heavy range. Speculative hands prefer to see a cheap multiway flop.':'One limper: at NL50 limpers are usually weak and call too much. Isolate wide for value, but not with offsuit junk.');
+      q.legend=[['raise','Raise'],['limp',H==='SB'?'Complete':'Over-limp'],['',H==='BB'?'Check':'Fold']];
+    }else{
+      const hi=POS.indexOf(H);if(hi<2)continue;const before=POS.slice(0,hi);
+      const oi=rnd(before.length-1),ci=oi+1+rnd(before.length-1-oi),O=before[oi],C=before[ci];
+      const sq=rng(EP(O)?'squeeze.vsEP':'squeeze.vsLP'),cl=rng(H==='BB'?'sqcall.BB':H==='SB'?'sqcall.SB':'sqcall.IP');
+      q.ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
+      foldBefore(H);q.seats[O]='Open '+money(open);q.seats[C]='Call';
+      const oop=H==='SB'||H==='BB',size=open*(4+(oop?1:0));
+      q.pot=.75+2*open;q.toCall=open-(H==='SB'?.25:H==='BB'?.5:0);
+      q.prompt=`<strong>${O}</strong> opens ${money(open)}, <strong>${C}</strong> calls. You're in the <strong>${H}</strong>. Squeeze size would be ${money(size)}.`;
+      q.key=`Preflop · Squeeze · ${H}`;q.tag='Open + caller';
+      q.expl.push(`Squeeze to about ${money(size)} (3x the open + 1x per caller${oop?' + 1x out of position':''}).`);
+      q.expl.push(EP(O)?'Opener is early: squeeze only premiums, flat the hands that play well multiway.':'Late opener + caller: both ranges are capped, so squeeze a bit wider (JJ+, AQs+, AK, KQs, A5s-A4s).');
+      if(H==='BB')q.expl.push(`BB closes the action and only needs ${money(open-.5)} more, so overcall wide with suited and connected hands.`);
+      q.legend=[['four','Squeeze'],['call','Call'],['','Fold']];
+    }
+    return q}
+  return null}
+function pfPickHand(q){
+  const inPool=new Set(q.pool);
+  const edges=q.pool.filter(c=>neighbors(c).some(n=>inPool.has(n)&&q.ansFn(n)!==q.ansFn(c)));
+  let cls;
+  for(let t=0;t<6;t++){
+    if(edges.length&&Math.random()<.6)cls=pick(edges);
+    else if(q.pool===CLS){const d=shuffle([...Array(52).keys()]);cls=comboCls(d[0],d[1])}
+    else{const w=q.pool.flatMap(c=>Array(nCombos(c)).fill(c));cls=pick(w)}
+    if(cls!==pf.last)break}
+  pf.last=cls;return{cls,cards:pick(classCombos(cls))}}
+
+function renderPF(){
+  $('#v-preflop').innerHTML=`
+  <h2 class="vt">Preflop</h2>
+  <div class="toolbar">
+    ${seg(PF_SUBS,pf.sub,'pfsub')}
+    <div class="chips"><span class="lab">Your seat</span>${PF_HEROES[pf.sub].map(p=>chip(p,pf.pos[pf.sub].has(p),'pfpos')).join('')}</div>
+    ${pf.sub==='3bet'?`<div class="chips"><span class="lab">3-bettor</span>${['HJ','CO','BTN','SB','BB'].map(p=>chip(p,pf.vill.has(p),'pfvill')).join('')}</div>`:''}
+  </div>
+  <div class="spot" id="pf-spot"></div>`;
+  pfNext()}
+function pfNext(){
+  const el=$('#pf-spot');const q=pfBuild();
+  if(!q){Timer.stop();el.innerHTML='<p class="empty">No spot matches these filters. Turn on at least one seat (for 3-bets, a 3-bettor who acts after you).</p>';return}
+  const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);pf.q=q;
+  el.innerHTML=`${timerHTML()}
+    <div class="shead"><span class="tag">${q.tag}</span><span class="pot">Pot ${money(q.pot)}${q.toCall?` · to call ${money(q.toCall)}`:''}</span></div>
+    <div class="seats">${POS.map(p=>{const a=q.seats[p];return `<div class="seat ${p===q.H?'me':''} ${a==='Fold'?'folded':a?'act':''}"><b>${p}</b><span>${p===q.H?(a?a:'You'):(a||(POS.indexOf(p)>POS.indexOf(q.H)?'·':''))}</span></div>`}).join('')}</div>
+    <div class="hand">${cardsHTML(q.cards)}</div>
+    <p class="prompt">${q.prompt}</p>
+    <div class="acts ${q.opts.length===2?'two':''}">${q.opts.map((o,i)=>`<button class="act a-${COLOR[o]||'fold'}" data-pfans="${o}"><kbd>${i+1}</kbd>${o}</button>`).join('')}</div>
+    <div class="fb" id="pf-fb" hidden></div>`;
+  Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>pfAnswer(null))}
+function pfAnswer(choice){
+  const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;
+  record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`);
+  const acts=$('#pf-spot .acts');acts.classList.add('done');
+  acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(b.dataset.pfans===q.ans)b.classList.add('right')});
+  const fb=$('#pf-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${q.cls} → ${q.ans} · ${(ms/1000).toFixed(1)}s</small></div>
+    ${q.expl.map(e=>`<p class="expl">${e}</p>`).join('')}
+    ${gridHTML(c=>{const a=q.ansFn(c);return a==null?'na':COLOR[a]},q.cls)}
+    ${legendHTML(q.legend)}
+    <button class="next" data-next="pf">Next hand ↵</button>`;
+  if(ok&&CFG.autoNext)q.auto=setTimeout(()=>{if(pf.q===q&&!$('#v-preflop').hidden)pfNext()},1100)}
+
+// ================= scenarios (shared) =================
+const SCEN={srp_pfr:{l:'You opened, got called',pfr:true},srp_call:{l:'You called an open',pfr:false},tbp_call:{l:'You called a 3-bet',pfr:false},tbp_pfr:{l:'You 3-bet, got called',pfr:true},iso:{l:'Iso vs limper',pfr:true}};
+function flatters(O){return O==='SB'?['BB']:O==='BTN'?['SB','BB']:after(O).filter(p=>p!=='SB')}
+function buildScen(type){
+  const open=CFG.openSize;let H,V,heroSet,villSet,desc,pot,opener;
+  if(type==='srp_pfr'||type==='srp_call'){
+    const O=pick(['UTG','HJ','CO','BTN','SB']),C=pick(flatters(O));opener=O;
+    const cs=villFlatSet(O,C),os=rng('rfi.'+O);pot=2*open+deadBlinds(O,C);
+    if(type==='srp_pfr'){H=O;V=C;heroSet=os;villSet=cs;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> calls.`}
+    else{H=C;V=O;heroSet=cs;villSet=os;desc=`<strong>${V}</strong> opens to ${money(open)}, you call in the <strong>${H}</strong>.`}
+  }else if(type==='tbp_call'||type==='tbp_pfr'){
+    const O=pick(['UTG','HJ','CO','BTN','SB']),B=pick(after(O));opener=O;
+    const T=Math.max(CFG.tbMax,2*open-.5),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+O);pot=2*T+deadBlinds(O,B);
+    if(type==='tbp_call'){H=O;V=B;heroSet=cs;villSet=ts;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> 3-bets to ${money(T)}, you call.`}
+    else{H=B;V=O;heroSet=ts;villSet=cs;desc=`<strong>${V}</strong> opens to ${money(open)}, you 3-bet to ${money(T)} from the <strong>${H}</strong>, ${V} calls.`}
+  }else{
+    V=pick(['UTG','HJ']);H=pick(['CO','BTN']);heroSet=rng('iso.LP1');villSet=rng('fish.limpcall');pot=2*2.5+.75;opener=V;
+    desc=`<strong>${V}</strong> (recreational) limps, you iso to $2.50 from the <strong>${H}</strong>, ${V} calls.`}
+  return{type,H,V,heroSet,villSet,desc,pot,opener,heroIP:isIP(H,V),pfr:SCEN[type].pfr}}
+function whyNotInRange(sc,cls){
+  if(sc.type==='srp_pfr'||sc.type==='tbp_pfr'&&false){}
+  if(sc.type==='srp_pfr'){return rng('3bet_vs.'+sc.H).has(cls)?`${sc.V} would 3-bet ${cls} preflop, not flat`:`${sc.V} folds ${cls} preflop vs a ${sc.H} open`}
+  if(sc.type==='srp_call')return `${cls} isn't in a ${sc.V} opening range`;
+  if(sc.type==='tbp_call')return `${cls} isn't in ${sc.V}'s 3-bet range vs ${sc.H}`;
+  if(sc.type==='tbp_pfr')return fourBetSet(sc.V).has(cls)?`${sc.V} would 4-bet ${cls}`:`${sc.V} folds ${cls} to a 3-bet (or never opens it)`;
+  return `${cls} isn't in the limp-call model (they'd raise it or fold it)`}
+
+// villain flop lines
+const vContinues=x=>!(x.k==='air'||(x.k==='wdraw'&&!x.f.gut));
+const FLOPACT={
+  none:{t:'',keep:()=>true},
+  call:{t:'You c-bet 1/3 pot, villain calls.',keep:vContinues},
+  xr:{t:'You c-bet, villain raises.',keep:x=>NUTK.includes(x.k)||x.k==='draw'},
+  vbig:{t:'Villain c-bets 3/4 pot.',keep:x=>x.k!=='weak'},
+  vcheck:{t:'Villain checks.',keep:x=>!['nut','set','two'].includes(x.k)}};
+
+// ================= range reading =================
+const rr={mode:'read',types:new Set(Object.keys(SCEN)),flopAct:true,spot:null,build:null,target:'random'};
+const BK={'Nutted (two pair+)':NUTK,'Overpair / top pair':['over','top'],'Weaker pair':['weak'],'Draws':['draw','wdraw'],'Air':['air']};
+function bucketShares(r){const o={};for(const b in BK)o[b]=r.filter(x=>BK[b].includes(x.k)).length/r.length;return o}
+function rrGen(){
+  const types=[...rr.types];if(!types.length)return null;
+  for(let t=0;t<40;t++){
+    const sc=buildScen(pick(types));
+    const hero=pick(rangeCombos(sc.heroSet,new Set()));const board=dealFlop(new Set(hero.cards));
+    const acts=rr.flopAct?(sc.pfr?['none','call','xr']:['none','vbig','vcheck']):['none'];const act=pick(acts);
+    const heroR=classifyRange(sc.heroSet,new Set(board),board);
+    const villPre=classifyRange(sc.villSet,new Set(board.concat(hero.cards)),board);
+    const villR=villPre.filter(FLOPACT[act].keep);
+    if(villR.length<8||heroR.length<8)continue;
+    const eq=rangeEq(heroR,villR,board,3000);
+    const nut=r=>r.filter(x=>NUTK.includes(x.k)).length/r.length;const hn=nut(heroR),vn=nut(villR);
+    const hi=Math.max(hn,vn),lo=Math.min(hn,vn);
+    const nutAns=(hi-lo<.02||hi/Math.max(lo,.001)<1.35)?'Even':hn>vn?'You':'Villain';
+    const eqAns=Math.abs(eq-.5)<.04?'Even':eq>.5?'You':'Villain';
+    const bs=bucketShares(villR),bSorted=Object.entries(bs).sort((a,b)=>b[1]-a[1]);
+    const bOk=bSorted.filter(([k,v])=>bSorted[0][1]-v<.02).map(x=>x[0]);
+    const tpp=villR.filter(x=>NUTK.includes(x.k)||x.k==='over'||x.k==='top').length/villR.length;
+    const TB=['Under 20%','20–35%','35–50%','Over 50%'],edges=[0,.2,.35,.5,1.01];
+    const tpOk=TB.filter((l,i)=>tpp>=edges[i]-.02&&tpp<edges[i+1]+.02);const tpAns=TB.find((l,i)=>tpp>=edges[i]&&tpp<edges[i+1]);
+    // unlikely hand
+    const cnt={};villR.forEach(x=>cnt[x.cls]=(cnt[x.cls]||0)+1);
+    const preCnt={};villPre.forEach(x=>preCnt[x.cls]=(preCnt[x.cls]||0)+1);
+    let odd,oddWhy;
+    const removed=Object.keys(preCnt).filter(c=>!cnt[c]);
+    if(act!=='none'&&removed.length){odd=pick(removed.sort((a,b)=>preCnt[b]-preCnt[a]).slice(0,6));oddWhy=`${odd} is in ${sc.V}'s preflop range, but ${act==='call'?'it folds to a c-bet here':act==='xr'?'it doesn\'t raise this flop':act==='vbig'?'it checks rather than bets big':'it would bet, not check'}`}
+    else{const live=CLS.filter(c=>!sc.villSet.has(c)&&rangeCombos(new Set([c]),new Set(board.concat(hero.cards))).length);
+      const pref=live.filter(c=>sc.heroSet.has(c));const pool=pref.length?pref:live;if(!pool.length)continue;
+      odd=pick(pool);oddWhy=whyNotInRange(sc,odd)}
+    const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).slice(0,8);if(top.length<3)continue;
+    const distract=shuffle(top).slice(0,3);
+    const qs=[
+      {id:'eq',q:'Who has the range (equity) advantage?',opts:['You','Even','Villain'],ok:[eqAns],ans:eqAns,expl:`Your range has ${pct(eq)} equity vs villain's ${pct(1-eq)}. “Even” means within 46–54%.`},
+      {id:'nut',q:'Who has the nut advantage (more two pair+)?',opts:['You','Even','Villain'],ok:[nutAns],ans:nutAns,expl:`Two pair or better: you ${pct1(hn)} of range, villain ${pct1(vn)}. The side with more nutted combos can bet big and raise.`},
+      {id:'bk',q:"Villain's range here is weighted most toward…",opts:Object.keys(BK),ok:bOk,ans:bSorted[0][0],expl:Object.entries(bs).map(([k,v])=>`${k} ${pct(v)}`).join(' · ')},
+      {id:'odd',q:'Which hand is villain unlikely to have here?',opts:shuffle(distract.concat(odd)),ok:[odd],ans:odd,expl:`${oddWhy}. The others are among villain's most common classes: ${distract.map(c=>`${c} (${cnt[c]} combos)`).join(', ')}.`},
+      {id:'tp',q:"What share of villain's range is top pair or better?",opts:TB,ok:tpOk,ans:tpAns,expl:`Top pair or better is ${pct(tpp)} of villain's ${villR.length} combos (answers within 2 points of a boundary also count).`}];
+    return{sc,hero,board,act,heroR,villPre,villR,eq,hn,vn,qs,qi:0,res:[]}}
+  return null}
+function renderRR(){
+  $('#v-reading').innerHTML=`
+  <h2 class="vt">Range reading</h2>
+  <p class="vsub">Read both ranges from villain's point of view. Villain's range removes your exact cards (blockers); your range doesn't.</p>
+  <div class="toolbar">
+    ${seg([['read','Read the spot'],['build','Build the range']],rr.mode,'rrmode')}
+    ${rr.mode==='read'?`<div class="chips"><span class="lab">Pot type</span>${Object.entries(SCEN).map(([k,v])=>chip(v.l,rr.types.has(k),'rrtype',k)).join('')}</div>
+    <div class="chips"><span class="lab">Flop line</span>${chip('Include villain action',rr.flopAct,'rrflop','1')}</div>`:
+    `<div class="chips"><span class="lab">Range</span><select id="rr-target"><option value="random">Random</option>${BUILD.map((b,i)=>`<option value="${i}" ${String(i)===rr.target?'selected':''}>${b.d}</option>`).join('')}</select></div>`}
+  </div>
+  <div class="spot" id="rr-spot"></div>`;
+  rr.mode==='read'?rrNext():rbNext()}
+function rrNext(){
+  const el=$('#rr-spot');el.innerHTML='<p class="busy">Dealing a spot…</p>';
+  setTimeout(()=>{const s=rrGen();rr.spot=s;if(!s){el.innerHTML='<p class="empty">Pick at least one pot type.</p>';return}rrShowQ()},10)}
+function rrHeader(s){
+  return `<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · pot ${money(s.sc.pot)}</span>${dots(s.qs.length,s.qi,s.res)}</div>
+  <p class="prompt">${s.sc.desc} ${s.act!=='none'?`<strong>${FLOPACT[s.act].t}</strong>`:''}</p>
+  <div class="boardwrap"><div><div class="lbl">You · ${s.sc.H}</div><div class="board">${cardsHTML(s.hero.cards,'sm')}</div></div><div><div class="lbl">Flop</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div>`}
+function rrShowQ(){
+  const s=rr.spot,q=s.qs[s.qi],el=$('#rr-spot');
+  el.innerHTML=`${timerHTML()}${rrHeader(s)}
+    <p class="q">${q.q}</p>
+    <div class="acts">${q.opts.map((o,i)=>`<button class="act plain" data-rrans="${o}"><kbd>${i+1}</kbd>${o}</button>`).join('')}</div>
+    <div class="fb" id="rr-fb" hidden></div>`;
+  s.qDone=false;Timer.start(el.querySelector('.timer i'),CFG.rrSec,()=>rrAnswer(null))}
+function rrAnswer(choice){
+  const s=rr.spot;if(!s||s.qDone)return;s.qDone=true;const q=s.qs[s.qi],ms=Timer.stop(),ok=q.ok.includes(choice);s.res[s.qi]=ok;
+  const QN={eq:'Equity advantage',nut:'Nut advantage',bk:'Range composition',odd:'Unlikely hand',tp:'Top pair+ share'};
+  record(`Ranges · ${QN[q.id]}`,ok,ms,{tab:'reading'},`${QN[q.id]} (${s.sc.H} vs ${s.sc.V}, ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}): you ${choice||'timed out'}, answer ${q.ans}`);
+  const acts=$('#rr-spot .acts');acts.classList.add('done');
+  acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.rrans===choice)b.classList.add('picked');if(q.ok.includes(b.dataset.rrans))b.classList.add('right')});
+  $('#rr-spot .qdots').outerHTML=dots(s.qs.length,s.qi,s.res);
+  const last=s.qi===s.qs.length-1,fb=$('#rr-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${(ms/1000).toFixed(1)}s</small></div>
+    <p class="expl">${q.expl}</p>${last?rrBreakdown(s):''}
+    <button class="next" data-next="rr">${last?'Next spot ↵':'Next question ↵'}</button>`}
+function catBars(r){const n=r.length;return `<div class="bars">${CATORDER.map(k=>{const c=r.filter(x=>x.k===k).length;if(!c)return '';return `<div class="bar"><span>${CATL[k]}</span><span class="t"><i class="${CATBAR[k]}" style="width:${Math.max(2,c/n*100)}%"></i></span><span class="n">${c} · ${pct(c/n)}</span></div>`}).join('')}</div>`}
+function rrBreakdown(s){
+  const cnt={},dom={};s.villR.forEach(x=>{cnt[x.cls]=(cnt[x.cls]||0)+1;(dom[x.cls]??={})[x.k]=(dom[x.cls][x.k]||0)+1});
+  const domK=c=>Object.entries(dom[c]).sort((a,b)=>b[1]-a[1])[0][0];
+  const pre=new Set(s.villPre.map(x=>x.cls));
+  const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||CATORDER.indexOf(domK(a))-CATORDER.indexOf(domK(b))).slice(0,16);
+  const nutHands=Object.keys(cnt).filter(c=>NUTK.includes(domK(c)));
+  return `<h4 class="sh">Effective ranges on this flop</h4>
+  <div class="kv"><div>Your equity<b>${pct(s.eq)}</b></div><div>Your two pair+<b>${pct1(s.hn)}</b></div><div>Villain two pair+<b>${pct1(s.vn)}</b></div><div>Villain combos<b>${s.villR.length}</b></div></div>
+  <div class="cols"><div><h4 class="sh">Villain · ${s.sc.V}</h4>${catBars(s.villR)}</div><div><h4 class="sh">You · ${s.sc.H} (as villain sees it)</h4>${catBars(s.heroR)}</div></div>
+  <h4 class="sh">Villain's most likely hands</h4>
+  <div class="hl">${top.map(c=>`<span>${c} ×${cnt[c]} <em>${CATL[domK(c)]}</em></span>`).join('')}</div>
+  ${nutHands.length?`<p class="note">Villain's nutted classes here: ${nutHands.join(', ')}.</p>`:`<p class="note">Villain has no two-pair-or-better classes on this flop.</p>`}
+  ${gridHTML(c=>cnt[c]?CATCOL[domK(c)]:pre.has(c)?'out':'',s.hero.cls)}
+  ${legendHTML([['four','Two pair+'],['raise','Overpair / top pair'],['limp','Weaker pair'],['draw','Draws'],['air','Air'],['out','Preflop range, gone after flop action']])}`}
+
+// ---- range builder
+const BUILD=[
+  ...['UTG','HJ','CO','BTN','SB'].map(p=>({d:`${p} open-raise`,set:()=>rng('rfi.'+p)})),
+  ...['UTG','HJ','CO','BTN','SB'].map(p=>({d:`BB flat vs ${p} open`,set:()=>villFlatSet(p,'BB')})),
+  ...['UTG','HJ','CO','BTN'].map(p=>({d:`3-bet vs ${p} open`,set:()=>rng('3bet_vs.'+p)})),
+  {d:'HJ flat vs UTG open',set:()=>villFlatSet('UTG','HJ')},
+  {d:'BTN flat vs CO open',set:()=>villFlatSet('CO','BTN')},
+  {d:'CO open, call BB 3-bet to $3',set:()=>call3bSet('CO','BB',3)},
+  {d:'UTG open, call BTN 3-bet to $3',set:()=>call3bSet('UTG','BTN',3)},
+  {d:'Fish limp-call (model)',set:()=>rng('fish.limpcall')}];
+let painting=false,paintVal=true;
+function rbNext(){
+  const i=rr.target==='random'?rnd(BUILD.length):+rr.target,b=BUILD[i];
+  rr.build={i,d:b.d,target:b.set(),sel:new Set(),done:false};
+  const el=$('#rr-spot');
+  el.innerHTML=`${timerHTML()}<div class="shead"><span class="tag">Paint the range</span><span class="pot" id="rb-n">0 combos · 0%</span></div>
+    <p class="q">${b.d}</p><p class="note">Tap or drag across cells to paint. Score is combo-weighted overlap; 75% passes.</p>
+    <div id="rb-grid">${gridHTML(()=>'',null,'id="rb-g"')}</div>
+    <div class="row"><button class="btn2" data-rb="clear">Clear</button><button class="next" style="flex:1" data-rb="submit">Check range</button></div>
+    <div class="fb" id="rb-fb" hidden></div>`;
+  $('#rb-g').classList.add('paint');bindPaint();
+  Timer.start(el.querySelector('.timer i'),CFG.rrSec*3,()=>rbSubmit())}
+function bindPaint(){
+  const g=$('#rb-g');
+  const apply=cell=>{const b=rr.build;if(!b||b.done)return;const c=cell.dataset.c;if(paintVal)b.sel.add(c);else b.sel.delete(c);cell.classList.toggle('raise',paintVal);const n=setCombos(b.sel);$('#rb-n').textContent=`${n} combos · ${pct(n/1326)}`};
+  g.addEventListener('pointerdown',e=>{const c=e.target.closest('.gc');if(!c)return;e.preventDefault();painting=true;paintVal=!rr.build.sel.has(c.dataset.c);apply(c);try{g.setPointerCapture(e.pointerId)}catch(_){}});
+  g.addEventListener('pointermove',e=>{if(!painting)return;const el=document.elementFromPoint(e.clientX,e.clientY);const c=el&&el.closest&&el.closest('.gc');if(c&&g.contains(c)&&(paintVal!==rr.build.sel.has(c.dataset.c)))apply(c)})}
+window.addEventListener('pointerup',()=>painting=false);window.addEventListener('pointercancel',()=>painting=false);
+function rbSubmit(){
+  const b=rr.build;if(!b||b.done)return;b.done=true;const ms=Timer.stop();
+  let tp=0,fp=0,fn=0;CLS.forEach(c=>{const a=b.sel.has(c),t=b.target.has(c),n=nCombos(c);if(a&&t)tp+=n;else if(a)fp+=n;else if(t)fn+=n});
+  const score=tp/Math.max(1,tp+fp+fn),ok=score>=.75;
+  record(`Ranges · Build · ${b.d}`,ok,ms,{tab:'reading',mode:'build',target:String(b.i)},`Built “${b.d}” at ${pct(score)} overlap`);
+  $('#rb-grid').innerHTML=gridHTML(c=>{const a=b.sel.has(c),t=b.target.has(c);return a&&t?'call':a?'extra':t?'miss':''},null);
+  const fb=$('#rb-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${pct(score)} match<small>${setCombos(b.target)} combos (${pct(setCombos(b.target)/1326)}) in the reference range</small></div>
+  ${legendHTML([['call','Correct'],['extra','Too loose'],['miss','Missed']])}
+  <p class="note">Missed: ${CLS.filter(c=>b.target.has(c)&&!b.sel.has(c)).join(', ')||'none'}<br>Extra: ${CLS.filter(c=>!b.target.has(c)&&b.sel.has(c)).join(', ')||'none'}</p>
+  <button class="next" data-next="rb">Next range ↵</button>`}
+
+// ================= math =================
+const MT=[['pot','Pot size'],['odds','Pot odds'],['mdf','MDF'],['outs','Outs'],['cf','Call or fold']];
+const mt={types:new Set(MT.map(x=>x[0])),q:null};
+function optsNum(correct,cands,fmt,step){
+  const seen=new Set([fmt(correct)]),o=[correct];
+  for(const c of shuffle(cands)){if(o.length>=4)break;if(!(c>0))continue;const f=fmt(c);if(!seen.has(f)){seen.add(f);o.push(c)}}
+  let k=1;while(o.length<4&&k<40){for(const c of[correct+step*k,correct-step*k]){const f=fmt(c);if(c>0&&!seen.has(f)&&o.length<4){seen.add(f);o.push(c)}}k++}
+  return shuffle(o).sort((a,b)=>a-b).map(v=>fmt(v))}
+function genMath(type){
+  if(type==='pot'){
+    const open=pick([1,1.25,1.5]),c={SB:.25,BB:.5},lines=[];
+    const oi=rnd(5),O=POS[oi];c[O]=open;lines.push(`${O} raises to ${money(open)}`);let active=[O];
+    for(let i=oi+1;i<6;i++){const p=POS[i];if(Math.random()<.28&&active.length<3){c[p]=open;active.push(p);lines.push(`${p} calls`)}}
+    let threeB=false;
+    if(active.length===1){
+      if(Math.random()<.4&&oi<5){const B=pick(POS.slice(oi+1)),T=r05(open*pick([3,3.5,4]));c[B]=T;c[O]=T;lines.push(`${B} 3-bets to ${money(T)}`,`${O} calls`);active=[O,B];threeB=true}
+      else if(O!=='BB'){c.BB=open;active.push('BB');lines.push(`BB calls`)}}
+    lines.push('everyone else folds');
+    let pot=Object.values(c).reduce((a,b)=>a+b,0),last=0;const pre=pot;
+    const dead=['SB','BB'].filter(p=>!active.includes(p)).reduce((a,p)=>a+c[p],0);
+    let flop=false;
+    if(Math.random()<.6){flop=true;const order=active.slice().sort((a,b)=>PO[a]-PO[b]);
+      const b=r05(pot*pick([.33,.5,.66,.75,1]));lines.push(`<strong>Flop</strong>: ${order[0]} bets ${money(b)}`);pot+=b;last=b;
+      if(order.length>1&&Math.random()<.4){const r=r05(b*pick([2.5,3,3.5]));lines.push(`${order[1]} raises to ${money(r)}`);pot+=r;last=r}
+      else if(order.length>2&&Math.random()<.5){lines.push(`${order[1]} calls`);pot+=b}}
+    const q=`What's in the pot right now${flop?'':' going to the flop'}?`;
+    return{q,lines,opts:optsNum(pot,[pot-dead,pot+last,pot-last,pot-.25,pot+.25,pre],money,.25),ans:money(pot),
+      expl:`Contributions: ${Object.entries(c).map(([p,v])=>`${p} ${money(v)}`).join(' · ')}${flop?' + flop bets':''}. ${dead?`Don't forget ${money(dead)} of dead blind money.`:''}`}}
+  if(type==='odds'||type==='mdf'){
+    const P=r05(2+Math.random()*48),f=pick([.25,.33,.5,.66,.75,1,1.25,1.5]),B=r05(P*f);
+    if(type==='odds'){const need=B/(P+2*B);
+      return{q:`Pot is ${money(P)}. Villain bets ${money(B)}. What equity do you need to call?`,lines:[],
+        opts:optsNum(Math.round(need*100),[Math.round(B/(P+B)*100),Math.round(B/P*100),Math.round((1-P/(P+B))*100)+5,Math.round(need*100)+6],v=>v+'%',4),ans:Math.round(need*100)+'%',
+        expl:`Need = bet ÷ (pot + 2 × bet) = ${money(B)} ÷ ${money(P+2*B)} = ${pct1(need)}. Memorise: ⅓ pot → 20%, ½ → 25%, ⅔ → 28.6%, ¾ → 30%, pot → 33%.`}}
+    const mdf=P/(P+B);
+    return{q:`Pot is ${money(P)}. Villain bets ${money(B)}. What's your minimum defence frequency?`,lines:[],
+      opts:optsNum(Math.round(mdf*100),[Math.round((1-B/(P+2*B))*100),Math.round((P-B)/P*100),Math.round(B/(P+B)*100),Math.round(mdf*100)-7],v=>v+'%',4),ans:Math.round(mdf*100)+'%',
+      expl:`MDF = pot ÷ (pot + bet) = ${money(P)} ÷ ${money(P+B)} = ${pct1(mdf)}. Memorise: ⅓ pot → 75%, ½ → 67%, ⅔ → 60%, ¾ → 57%, pot → 50%. At NL50, most villains under-bluff big bets, so defending below MDF there is often fine.`}}
+  if(type==='outs'||type==='cf'){
+    const turn=type==='cf'||Math.random()<.35,s=genOutsSpot(turn?'turn':'flop');
+    const n=s.outs.length,left=turn?44:45;
+    const heroName=CATL[classify(s.hero,s.board.slice(0,3)).k];
+    const outsTxt=s.outs.map(cardTxt).join(' ');
+    if(type==='outs')return{cards:s,q:`Villain shows their hand. How many outs put you ahead on the ${turn?'river':'turn'}?`,lines:[],
+      opts:optsNum(n,[n+1,n-1,n+2,n-2,n+3,n-3,n+4],v=>String(v),1),ans:String(n),
+      expl:`${n} outs: ${outsTxt}. Next-card odds ${n}/${left} = ${pct(n/left)}. ${turn?`Rule of 2: ≈${2*n}%.`:`Rule of 4 (flop to river, all-in): ≈${Math.min(100,4*n)}%. Rule of 2 for one card: ≈${2*n}%.`}`};
+    const eq=n/44;let tgt=Math.min(.45,Math.max(.08,eq+(Math.random()-.5)*.22));let P=r05(4+Math.random()*36),B=Math.max(.25,r05(tgt*P/(1-2*tgt)));
+    let need=B/(P+2*B);if(Math.abs(eq-need)<.015){B=r05(B*1.25);need=B/(P+2*B)}
+    const ans=eq>=need?'Call':'Fold';
+    return{cards:s,q:`Turn. Pot ${money(P)}, villain bets ${money(B)}. Villain's hand is face up. Call or fold on direct odds?`,lines:[],opts:['Call','Fold'],ans,
+      expl:`${n} outs: ${outsTxt}. Equity ${n}/44 = ${pct1(eq)} (rule of 2 ≈ ${2*n}%). Need ${money(B)} ÷ ${money(P+2*B)} = ${pct1(need)}. ${Math.abs(eq-need)<.06?'Close spot: implied odds vs a stack-off-happy villain can turn a small shortfall into a call.':''}`}}}
+function countOuts(h,v,board){const dead=new Set(h.concat(v,board)),o=[];for(let c=51;c>=0;c--){if(dead.has(c))continue;const b=board.concat(c);if(evalCards(h.concat(b))>evalCards(v.concat(b)))o.push(c)}return o}
+function genOutsSpot(street){
+  for(let t=0;t<6000;t++){const d=shuffle([...Array(52).keys()]),h=[d[0],d[1]],v=[d[2],d[3]],board=d.slice(4,street==='flop'?7:8);
+    const hs=evalCards(h.concat(board)),vs=evalCards(v.concat(board));if(hs>=vs||(vs>>20)<1)continue;
+    const o=countOuts(h,v,board);if(o.length<2||o.length>17)continue;if(o.length<7&&Math.random()<.6)continue;
+    return{hero:h.sort((a,b)=>b-a),vill:v.sort((a,b)=>b-a),board,outs:o}}}
+function renderMath(){
+  $('#v-math').innerHTML=`<h2 class="vt">Math</h2>
+  <div class="toolbar"><div class="chips"><span class="lab">Drills</span>${MT.map(([k,l])=>chip(l,mt.types.has(k),'mttype',k)).join('')}</div></div>
+  <div class="spot" id="mt-spot"></div>`;mtNext()}
+function mtNext(){
+  const el=$('#mt-spot'),types=[...mt.types];if(!types.length){Timer.stop();el.innerHTML='<p class="empty">Pick at least one drill.</p>';return}
+  const type=pick(types),q=genMath(type);q.type=type;mt.q=q;
+  el.innerHTML=`${timerHTML()}<div class="shead"><span class="tag">${MT.find(x=>x[0]===type)[1]}</span></div>
+  ${q.lines.length?`<p class="prompt">${q.lines.join(', ')}.</p>`:''}
+  ${q.cards?`<div class="boardwrap"><div><div class="lbl">You</div><div class="board">${cardsHTML(q.cards.hero,'sm')}</div></div><div><div class="lbl">Villain</div><div class="board">${cardsHTML(q.cards.vill,'sm')}</div></div><div><div class="lbl">Board</div><div class="board">${cardsHTML(q.cards.board,'sm')}</div></div></div>`:''}
+  <p class="q">${q.q}</p>
+  <div class="acts ${q.opts.length===2?'two':''}">${q.opts.map((o,i)=>`<button class="act plain ${o==='Call'?'a-call':''}" data-mtans="${o}"><kbd>${i+1}</kbd>${o}</button>`).join('')}</div>
+  <div class="fb" id="mt-fb" hidden></div>`;
+  Timer.start(el.querySelector('.timer i'),CFG.mathSec,()=>mtAnswer(null))}
+function mtAnswer(choice){
+  const q=mt.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop(),ok=choice===q.ans,lab=MT.find(x=>x[0]===q.type)[1];
+  record(`Math · ${lab}`,ok,ms,{tab:'math',type:q.type},`${lab}: you ${choice||'timed out'}, answer ${q.ans}`);
+  const acts=$('#mt-spot .acts');acts.classList.add('done');
+  acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.mtans===choice)b.classList.add('picked');if(b.dataset.mtans===q.ans)b.classList.add('right')});
+  const fb=$('#mt-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${q.ans} · ${(ms/1000).toFixed(1)}s</small></div><p class="expl">${q.expl}</p><button class="next" data-next="mt">Next ↵</button>`;
+  if(ok&&CFG.autoNext)q.auto=setTimeout(()=>{if(mt.q===q&&!$('#v-math').hidden)mtNext()},1400)}
+
+// ================= postflop =================
+const PP_MODES=[['bet','Bet or check'],['face','Facing a bet'],['block','Pick the bluff']];
+const pp={mode:'bet',pots:new Set(['srp','tbp','iso']),spot:null};
+function pickHands(r,n){
+  const g={};r.forEach(x=>(g[x.k]??=[]).push(x));const keys=shuffle(Object.keys(g)),o=[],used=new Set();
+  for(let i=0;o.length<n&&i<80;i++){const x=pick(g[keys[i%keys.length]]);if(used.has(x.cls))continue;used.add(x.cls);o.push(x)}
+  return o}
+const blockFrac=(h,r)=>r.length?r.filter(v=>h.includes(v.cards[0])||h.includes(v.cards[1])).length/r.length:0;
+function decideBet(x){
+  const sd=x.f.fd||x.f.oesd,made=['nut','set','two','trips','over','top','weak'].includes(x.k);
+  if(x.eqCall>=.55)return{ans:'Value',ok:x.eqCall<.6?['Value','Check']:['Value'],why:`${pct(x.eqCall)} against the hands that call. Worse hands pay you.`};
+  if(made&&sd)return{ans:'Value',ok:['Value','Bluff'],why:`Pair plus ${drawName(x.f)}: bet for value and protection (${pct(x.eqCall)} vs calls).`};
+  if(made&&x.eqAll>=.45)return{ans:'Check',ok:['Check'],why:`Showdown value (${pct(x.eqAll)} vs the whole range) but only ${pct(x.eqCall)} when called. Check and bluff-catch.`};
+  if(sd)return{ans:'Bluff',ok:['Bluff'],why:`Semi-bluff: ${drawName(x.f)} keeps ${pct(x.eqCall)} when called, plus fold equity.`};
+  if(x.f.gut||(x.f.bdfd&&x.f.overs>=1)||x.f.overs===2)return{ans:'Bluff',ok:['Bluff','Check'],why:`${drawName(x.f)}: a fine small-size bluff with some equity (${pct(x.eqCall)} vs calls).`};
+  if(x.block>=.14)return{ans:'Bluff',ok:['Bluff','Check'],why:`No draw, but you block ${pct(x.block)} of villain's calling combos.`};
+  return{ans:'Check',ok:['Check'],why:`${pct(x.eqCall)} vs calls, no draw and no useful blockers. Give up.`}}
+function decideFace(x,need){
+  const sd=x.f.fd||x.f.oesd;
+  if(x.eq>=.78)return{ans:'Raise',ok:['Raise','Call'],why:`${pct(x.eq)} vs the betting range. Raise for value; NL50 players call raises too often.`};
+  if(sd&&x.eq>=need-.05)return{ans:'Call',ok:['Call','Raise'],why:`${drawName(x.f)} with ${pct(x.eq)} vs ${pct(need)} needed. Call, or raise as a semi-bluff.`};
+  if(x.eq>=need+.03)return{ans:'Call',ok:['Call'],why:`${pct(x.eq)} equity beats the ${pct(need)} price.`};
+  if(x.eq>=need)return{ans:'Call',ok:['Call','Fold'],why:`Marginal: ${pct(x.eq)} vs ${pct(need)} needed.`};
+  if((x.f.gut||x.f.bdfd)&&x.eq>=need-.04)return{ans:'Call',ok:['Call','Fold'],why:`${pct(x.eq)} vs ${pct(need)}: short on direct odds, implied odds make it close.`};
+  return{ans:'Fold',ok:['Fold'],why:`${pct(x.eq)} vs ${pct(need)} needed. Fold.`}}
+function ppGen(){
+  const map=pp.mode==='face'?{srp:'srp_call',tbp:'tbp_call'}:{srp:'srp_pfr',tbp:'tbp_pfr',iso:'iso'};
+  let types=[...pp.pots].map(p=>map[p]).filter(Boolean);if(!types.length)types=[pp.mode==='face'?'srp_call':'srp_pfr'];
+  const it=CFG.iters;
+  for(let t=0;t<40;t++){
+    const sc=buildScen(pick(types)),board=dealFlop(new Set());
+    const heroR=classifyRange(sc.heroSet,new Set(board),board),villR=classifyRange(sc.villSet,new Set(board),board);
+    if(heroR.length<10||villR.length<10)continue;
+    if(pp.mode==='bet'){
+      const callR=villR.filter(vContinues);if(callR.length<5)continue;
+      const hands=pickHands(heroR,5);hands.forEach(x=>{x.eqAll=mcEquity(x.cards,board,villR,it);x.eqCall=mcEquity(x.cards,board,callR,it);x.block=blockFrac(x.cards,callR);x.d=decideBet(x)});
+      const size=r05(sc.pot/3);
+      return{mode:'bet',sc,board,heroR,villR,hands,tags:[],opts:['Value','Bluff','Check'],
+        line:`${sc.heroIP?'Villain checks to you.':'You act first.'} Tag each hand: bet ${money(size)} (⅓ pot) for value, bet as a bluff, or check.`}}
+    if(pp.mode==='face'){
+      const f=pick([.33,.5,.75,1]),B=r05(sc.pot*f),betR=f>=.75?villR.filter(x=>x.k!=='weak'):villR;
+      const need=B/(sc.pot+2*B),mdf=sc.pot/(sc.pot+B);
+      const hands=pickHands(heroR,5);hands.forEach(x=>{x.eq=mcEquity(x.cards,board,betR,it);x.d=decideFace(x,need)});
+      return{mode:'face',sc,board,heroR,villR,betR,hands,tags:[],opts:['Raise','Call','Fold'],B,f,need,mdf,
+        line:`${sc.heroIP?'':'You check. '}<strong>${sc.V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot${f>=.75?', polarised: model removes weak pairs from their range':', range bet'}). Price: ${pct(need)} · MDF ${pct(mdf)}.`}}
+    // block
+    const callR=villR.filter(vContinues),foldR=villR.filter(x=>!vContinues(x));if(callR.length<5||foldR.length<5)continue;
+    const air=heroR.filter(x=>x.k==='air'||(x.k==='wdraw'&&!x.f.gut)),byC={};air.forEach(x=>(byC[x.cls]??=[]).push(x));
+    const cl=Object.keys(byC);if(cl.length<3)continue;
+    const cands=shuffle(cl).slice(0,3).map(c=>{const x=pick(byC[c]);x.bc=blockFrac(x.cards,callR);x.bf=blockFrac(x.cards,foldR);x.score=x.bc-x.bf;return x});
+    const srt=cands.slice().sort((a,b)=>b.score-a.score);if(srt[0].score-srt[1].score<.025)continue;
+    return{mode:'block',sc,board,heroR,villR,callR,foldR,cands,best:srt[0],
+      line:`${sc.heroIP?'Villain checks to you.':'You act first.'} You want to bluff with one of these. Which blocks more of villain's calls and fewer of their folds?`}}
+  return null}
+function renderPP(){
+  $('#v-postflop').innerHTML=`<h2 class="vt">Postflop</h2>
+  <p class="vsub">Equities are simulated against the model ranges. Several answers can be accepted when a spot is close.</p>
+  <div class="toolbar">${seg(PP_MODES,pp.mode,'ppmode')}
+  <div class="chips"><span class="lab">Pot type</span>${[['srp','Single-raised'],['tbp','3-bet pot'],['iso','Iso pot']].filter(x=>!(pp.mode==='face'&&x[0]==='iso')).map(([k,l])=>chip(l,pp.pots.has(k),'pppot',k)).join('')}</div></div>
+  <div class="spot" id="pp-spot"></div>`;ppNext()}
+function ppNext(){
+  const el=$('#pp-spot');Timer.stop();el.innerHTML='<p class="busy">Running equities…</p>';
+  setTimeout(()=>{const s=ppGen();pp.spot=s;if(!s){el.innerHTML='<p class="empty">Could not build a spot. Try again.</p>';return}
+    const head=`${timerHTML()}<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · ${s.sc.H} vs ${s.sc.V}</span><span class="pot">Pot ${money(s.sc.pot)}</span></div>
+      <p class="prompt">${s.sc.desc}</p><div class="boardwrap"><div><div class="lbl">Flop</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div><p class="prompt">${s.line}</p>`;
+    if(s.mode==='block'){
+      el.innerHTML=`${head}<div class="acts blk">${s.cands.map((x,i)=>`<button class="act" data-ppblock="${i}"><kbd>${i+1}</kbd>${cardsHTML(x.cards,'xs')}</button>`).join('')}</div><div class="fb" id="pp-fb" hidden></div>`;
+      Timer.start(el.querySelector('.timer i'),Math.round(CFG.postSec/2),()=>ppBlock(null));return}
+    el.innerHTML=`${head}<div id="pp-rows">${s.hands.map((x,i)=>`<div class="hrow"><div class="hc">${cardsHTML(x.cards,'xs')}</div><div class="tags">${s.opts.map(o=>`<button class="tg t-${o}" data-pptag="${i}|${o}">${o}</button>`).join('')}</div><p class="hres" id="pp-r${i}" hidden></p></div>`).join('')}</div>
+      <button class="next" data-ppsubmit="1">Check answers</button><div class="fb" id="pp-fb" hidden></div>`;
+    Timer.start(el.querySelector('.timer i'),CFG.postSec,()=>ppSubmit())},20)}
+function ppTag(i,o){const s=pp.spot;if(!s||s.done)return;s.tags[i]=o;
+  document.querySelectorAll(`[data-pptag^="${i}|"]`).forEach(b=>b.classList.toggle('on',b.dataset.pptag===`${i}|${o}`));
+  if(s.hands.every((_,k)=>s.tags[k]))ppSubmit()}
+function ppSubmit(){
+  const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop();let right=0;
+  const ml=PP_MODES.find(m=>m[0]===s.mode)[1];
+  s.hands.forEach((x,i)=>{const t=s.tags[i],ok=x.d.ok.includes(t);if(ok)right++;
+    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, model ${x.d.ans}`);
+    document.querySelectorAll(`[data-pptag^="${i}|"]`).forEach(b=>{const o=b.dataset.pptag.split('|')[1];b.disabled=true;if(o===t)b.classList.add(ok?'ok':'no');else if(x.d.ok.includes(o))b.classList.add('ok')});
+    const r=$('#pp-r'+i);r.hidden=false;
+    r.innerHTML=`<span class="${ok?'ok':'no'}">${ok?'✓':'✗'} ${x.d.ok.join(' / ')}</span> · <b>${CATL[x.k]}</b>${drawName(x.f)!=='no draw'&&!['draw','wdraw'].includes(x.k)?` + ${drawName(x.f)}`:''}. ${x.d.why}`});
+  const fb=$('#pp-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${right>=4?'good':'bad'}">${right}/${s.hands.length} right<small>${(ms/1000).toFixed(1)}s</small></div>
+    ${s.mode==='face'?`<div id="pp-mdf"><p class="busy">Checking your whole range against MDF…</p></div>`:ppVillSummary(s)}
+    <button class="next" data-next="pp">Next spot ↵</button>`;
+  $('[data-ppsubmit]').hidden=true;
+  if(s.mode==='face')setTimeout(()=>{if(pp.spot!==s)return;let cont=0;
+    s.heroR.forEach(x=>{const eq=mcEquity(x.cards,s.board,s.betR,90);if(decideFace({eq,f:x.f},s.need).ans!=='Fold')cont++});
+    const cf=cont/s.heroR.length,el=$('#pp-mdf');if(!el)return;
+    el.innerHTML=`<h4 class="sh">Your whole range vs this bet</h4>
+      <div class="meter"><i style="width:${cf*100}%"></i><b style="left:${s.mdf*100}%"></b></div>
+      <p class="note">The model continues with <strong>${pct(cf)}</strong> of your ${s.heroR.length} combos. MDF (black tick) is ${pct(s.mdf)}. ${cf<s.mdf-.05?'You fold more than MDF; a villain who bets any two cards would profit. At NL50 most villains don\'t, so over-folding big bets is often fine but over-folding small bets is a leak.':'You defend enough that villain can\'t auto-profit with any two cards.'}</p>`},30)}
+function ppVillSummary(s){const callR=s.villR.filter(vContinues);
+  return `<p class="note">Villain's calling range vs a small c-bet: ${callR.length} of ${s.villR.length} combos (${pct(callR.length/s.villR.length)}). Composition:</p>${catBars(callR)}`}
+function ppBlock(i){
+  const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop(),pickd=i==null?null:s.cands[i],ok=pickd===s.best;
+  record('Postflop · Pick the bluff · Blockers',ok,ms,{tab:'postflop',mode:'block'},`Blockers on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: picked ${pickd?pickd.cls:'nothing'}, best ${s.best.cls}`);
+  const acts=$('#pp-spot .acts');acts.classList.add('done');
+  acts.querySelectorAll('.act').forEach((b,k)=>{b.disabled=true;if(k===i)b.classList.add('picked');if(s.cands[k]===s.best)b.classList.add('right')});
+  const blocked=x=>{const m={};s.callR.forEach(v=>{if(x.cards.includes(v.cards[0])||x.cards.includes(v.cards[1]))m[v.cls]=(m[v.cls]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,n])=>`${c}×${n}`).join(', ')||'nothing'};
+  const fb=$('#pp-fb');fb.hidden=false;
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':pickd?'Wrong':'Time'}<small>best: ${s.best.cls}</small></div>
+    ${s.cands.map(x=>`<p class="expl"><strong>${x.cls}</strong> blocks ${pct1(x.bc)} of calls, ${pct1(x.bf)} of folds → net ${x.score>=0?'+':''}${(x.score*100).toFixed(1)} pts. Blocks: ${blocked(x)}.</p>`).join('')}
+    <p class="note">Good bluffs remove the hands that call (top pairs, draws) and leave villain holding the hands that fold.</p>
+    <button class="next" data-next="pp">Next spot ↵</button>`}
+
+// ================= charts =================
+let chartKey='rfi.CO';
+function renderCharts(){
+  const s=rng(chartKey),custom=customRanges[chartKey]!=null;
+  $('#v-charts').innerHTML=`<h2 class="vt">Range charts</h2>
+  <p class="vsub">These are the reference ranges every drill grades against. Edit any of them to match your own strategy or your pool.</p>
+  <div class="row"><select id="chart-sel">${Object.keys(DEF_RANGES).map(k=>`<option value="${k}" ${k===chartKey?'selected':''}>${RANGE_LABELS[k]||k}</option>`).join('')}</select>
+  ${custom?'<span class="pill g">edited</span>':''}<span class="pill">${setCombos(s)} combos · ${pct1(setCombos(s)/1326)}</span></div>
+  ${gridHTML(c=>s.has(c)?'raise':'',null)}
+  <label for="chart-txt" class="tag">Range notation</label>
+  <textarea id="chart-txt" spellcheck="false">${customRanges[chartKey]??DEF_RANGES[chartKey]}</textarea>
+  <div class="row"><button class="btn2" data-chart="save">Save range</button><button class="btn2" data-chart="reset" ${custom?'':'disabled'}>Restore default</button><span class="note" id="chart-msg"></span></div>
+  <p class="note">Notation: 22+, A2s+, KTo+, A5s-A2s, 76s, AK (both suits). BB defend and SB/IP flat charts include hands that also appear in the 3-bet chart; drills subtract the 3-bets.</p>`}
+
+// ================= stats =================
+let resetArm=false;
+function renderStats(){
+  const E=Object.entries(STATS).map(([k,v])=>({k,...v,acc:v.ok/v.n}));
+  const tot=E.reduce((a,e)=>a+e.n,0),okT=E.reduce((a,e)=>a+e.ok,0);
+  const mods=['Preflop','Ranges','Math','Postflop'].map(m=>{const es=E.filter(e=>e.k.startsWith(m));const n=es.reduce((a,e)=>a+e.n,0),o=es.reduce((a,e)=>a+e.ok,0);return{m,n,acc:n?o/n:null}});
+  const leaks=E.filter(e=>e.n>=3).sort((a,b)=>a.acc-b.acc||b.n-a.n).slice(0,12);
+  const accCol=a=>a>=.85?'var(--good)':a>=.65?'var(--brass)':'var(--bad)';
+  const row=e=>`<tr><td>${e.k.replace(/^(\w+) · /,'<span class="pill">$1</span> ')}</td><td class="num"><span class="accbar"><i style="width:${e.acc*100}%;background:${accCol(e.acc)}"></i></span>${pct(e.acc)}</td><td class="num">${e.n}</td><td class="num">${(e.ms/e.n/1000).toFixed(1)}s</td><td><button class="btn2" data-drill="${encodeURIComponent(e.k)}">Drill</button></td></tr>`;
+  $('#v-stats').innerHTML=`<h2 class="vt">Leak finder</h2>
+  <p class="vsub">Every answer is logged by spot. Spots with 3+ attempts are ranked by accuracy; your worst ones are your leaks. ${Cloud.user?'Synced across your signed-in devices.':'Saved on this device only until you sign in (Settings → Sync).'}</p>
+  <div class="kv"><div>All-time<b>${tot?pct(okT/tot):'–'}</b>${tot} answers</div>${mods.map(m=>`<div>${m.m}<b>${m.acc==null?'–':pct(m.acc)}</b>${m.n} answers</div>`).join('')}</div>
+  <h4 class="sh">Biggest leaks</h4>
+  ${leaks.length?`<div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${leaks.map(row).join('')}</tbody></table></div>`:'<p class="empty">No spot has 3 attempts yet. Run a few drills and your weakest spots will show up here.</p>'}
+  <h4 class="sh">Recent mistakes</h4>
+  ${MISSES.length?`<ul class="misses">${MISSES.slice(0,20).map(m=>`<li>${m.m}</li>`).join('')}</ul>`:'<p class="empty">No mistakes logged yet.</p>'}
+  ${E.length>leaks.length?`<h4 class="sh">All spots</h4><div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${E.sort((a,b)=>a.k.localeCompare(b.k)).map(row).join('')}</tbody></table></div>`:''}
+  <div class="row"><button class="btn2 danger" data-reset="1">${resetArm?'Tap again to erase all stats':'Reset stats'}</button></div>`}
+function drill(key){
+  const s=STATS[key];if(!s||!s.drill)return;const d=s.drill;
+  if(d.tab==='preflop'){pf.sub=d.sub;pf.pos[d.sub]=new Set([d.pos]);const m=key.match(/vs (\w+)$/);if(d.sub==='3bet'&&m)pf.vill=new Set([m[1]])}
+  if(d.tab==='math')mt.types=new Set([d.type]);
+  if(d.tab==='postflop')pp.mode=d.mode;
+  if(d.tab==='reading'){rr.mode=d.mode||'read';if(d.target)rr.target=d.target}
+  show(d.tab)}
+
+// ================= settings =================
+function openSettings(){
+  const o=$('#overlay');o.hidden=false;o.className='overlay';
+  const num=(id,l,sub,v,step,min,max)=>`<label class="f"><span>${l}${sub?`<small>${sub}</small>`:''}</span><input type="number" id="${id}" value="${v}" step="${step}" min="${min}" max="${max}"></label>`;
+  const sync=!Cloud.on?`<p class="note">Cloud sync is off: add your Firebase settings to <code>firebase-config.js</code> (see README). Stats are saved on this device only.</p>`
+    :Cloud.user?`<p class="note">Signed in as <strong>${Cloud.user.email}</strong> · ${Cloud.label()}${Cloud.err?` · ${Cloud.err}`:''}</p><div class="row"><button class="btn2" data-auth="sync">Sync now</button><button class="btn2" data-auth="out">Sign out</button></div>`
+    :`<p class="note">Sign in to share stats, settings and edited charts across your devices. Answers from this device upload on first sign-in.</p>
+      <input type="email" id="auth-email" placeholder="Email" autocomplete="username" autocapitalize="off">
+      <input type="password" id="auth-pw" placeholder="Password (6+ characters)" autocomplete="current-password">
+      <div class="row"><button class="btn2" data-auth="in">Sign in</button><button class="btn2" data-auth="new">Create account</button><button class="btn2" data-auth="reset">Forgot password</button></div>`;
+  o.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings"><h2 class="vt" style="font-size:24px">Settings</h2>
+    <h3>Sync</h3>${sync}<p class="note" id="auth-msg" role="status"></p><h3>Drills</h3>
+    <label class="f"><span>Timer<small>Answer before the bar runs out</small></span><input type="checkbox" id="s-timer" ${CFG.timerOn?'checked':''}></label>
+    ${num('s-pf','Preflop seconds','',CFG.pfSec,1,2,60)}${num('s-rr','Range question seconds','Range builder gets 3×',CFG.rrSec,1,5,120)}
+    ${num('s-mt','Math seconds','',CFG.mathSec,1,3,90)}${num('s-pp','Postflop seconds per spot','',CFG.postSec,1,10,180)}
+    ${num('s-open','Your open size ($)','Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}
+    ${num('s-tbmin','Villain 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Villain 3-bet max ($)','Also the 3-bet size used in 3-bet pots',CFG.tbMax,.25,1,8)}
+    <label class="f"><span>Auto-advance when correct<small>Preflop and math drills</small></span><input type="checkbox" id="s-auto" ${CFG.autoNext?'checked':''}></label>
+    ${num('s-it','Equity samples per hand','Higher is slower and more precise',CFG.iters,100,200,3000)}
+    <div class="row"><button class="next" style="flex:1" data-set="save">Save</button><button class="btn2" data-set="close">Cancel</button></div></div>`}
+function saveSettings(){
+  const v=id=>parseFloat($(id).value);
+  const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
+  CFG={timerOn:$('#s-timer').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
+    openSize:clamp(v('#s-open'),.75,2.5,1),tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
+  if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;save('ll_cfg',CFG);Cloud.saveUser();closeSettings();show(cur)}
+function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
+
+// ================= navigation & events =================
+let cur='preflop';
+const RENDER={preflop:renderPF,reading:renderRR,math:renderMath,postflop:renderPP,charts:renderCharts,stats:renderStats};
+function show(tab){
+  Timer.stop();cur=tab;resetArm=false;
+  document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!=='v-'+tab);
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  RENDER[tab]();try{localStorage.setItem('ll_tab',tab)}catch(e){}}
+function toggleSet(set,v){if(set.has(v))set.delete(v);else set.add(v)}
+document.addEventListener('click',e=>{
+  if(e.target.closest('#sync-badge'))return openSettings();
+  const t=e.target.closest('button');if(!t)return;const d=t.dataset;
+  if(d.tab)return show(d.tab);
+  if(d.pfsub){pf.sub=d.pfsub;return renderPF()}
+  if(d.pfpos){toggleSet(pf.pos[pf.sub],d.pfpos);return renderPF()}
+  if(d.pfvill){toggleSet(pf.vill,d.pfvill);return renderPF()}
+  if(d.pfans)return pfAnswer(d.pfans);
+  if(d.next){clearTimeout(pf.q&&pf.q.auto);clearTimeout(mt.q&&mt.q.auto);
+    if(d.next==='pf')return pfNext();
+    if(d.next==='rr'){const s=rr.spot;if(s&&s.qi<s.qs.length-1){s.qi++;return rrShowQ()}return rrNext()}
+    if(d.next==='rb')return rbNext();if(d.next==='mt')return mtNext();if(d.next==='pp')return ppNext()}
+  if(d.rrmode){rr.mode=d.rrmode;return renderRR()}
+  if(d.rrtype){toggleSet(rr.types,d.rrtype);return renderRR()}
+  if(d.rrflop){rr.flopAct=!rr.flopAct;return renderRR()}
+  if(d.rrans)return rrAnswer(d.rrans);
+  if(d.rb){if(d.rb==='submit')return rbSubmit();if(rr.build&&!rr.build.done){rr.build.sel.clear();document.querySelectorAll('#rb-g .gc').forEach(c=>c.classList.remove('raise'));$('#rb-n').textContent='0 combos · 0%'}return}
+  if(d.mttype){toggleSet(mt.types,d.mttype);return renderMath()}
+  if(d.mtans)return mtAnswer(d.mtans);
+  if(d.ppmode){pp.mode=d.ppmode;return renderPP()}
+  if(d.pppot){toggleSet(pp.pots,d.pppot);return renderPP()}
+  if(d.pptag){const[i,o]=d.pptag.split('|');return ppTag(+i,o)}
+  if(d.ppsubmit)return ppSubmit();
+  if(d.ppblock)return ppBlock(+d.ppblock);
+  if(d.chart){const msg=$('#chart-msg');
+    if(d.chart==='save'){const txt=$('#chart-txt').value.trim(),s=parseRange(txt);if(!s.size){msg.textContent='No valid hands found. Check the notation.';return}
+      customRanges[chartKey]=txt;save('ll_ranges',customRanges);Cloud.saveUser();renderCharts();$('#chart-msg').textContent='Saved. Drills now use this range.';return}
+    delete customRanges[chartKey];save('ll_ranges',customRanges);Cloud.saveUser();return renderCharts()}
+  if(d.drill)return drill(decodeURIComponent(d.drill));
+  if(d.reset){if(!resetArm){resetArm=true;return renderStats()}
+    STATS={};MISSES=[];PENDING={stats:{},misses:[]};save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_pending',PENDING);resetArm=false;
+    Cloud.resetStats().catch(e=>Cloud.fail(e));return renderStats()}
+  if(d.auth){if(d.auth==='sync')return Cloud.pull();return authAct(d.auth)}
+  if(t.id==='openSettings')return openSettings();
+  if(d.set)return d.set==='save'?saveSettings():closeSettings()});
+document.addEventListener('change',e=>{
+  if(e.target.id==='chart-sel'){chartKey=e.target.value;renderCharts()}
+  if(e.target.id==='rr-target'){rr.target=e.target.value;rbNext()}});
+$('#overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSettings()});
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select')||!$('#overlay').hidden)return;
+  const v=document.querySelector('.view:not([hidden])');if(!v)return;
+  if(/^[1-5]$/.test(e.key)){const b=v.querySelectorAll('.acts:not(.done) .act')[+e.key-1];if(b){e.preventDefault();b.click()}return}
+  if(e.key==='Enter'||e.key===' '){const n=v.querySelector('[data-next]');if(n){e.preventDefault();n.click()}}});
+
+hud();
+let startTab='preflop';try{const t=localStorage.getItem('ll_tab');if(t&&RENDER[t])startTab=t}catch(e){}
+show(startTab);
+Cloud.init();
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
