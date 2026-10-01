@@ -266,8 +266,11 @@ const $=s=>document.querySelector(s);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
-const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
-let CFG=Object.assign({},DEF_CFG,load('ll_cfg',{}));
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:2,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+// v2: default open became $1.25 ($1.50 from the SB); older saved settings are upgraded once.
+function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5;c.v=2}return c}
+let CFG=migrateCfg(load('ll_cfg',{}));
+const openFor=p=>p==='SB'?CFG.sbOpen:CFG.openSize;
 
 // ================= hand classes & ranges =================
 const CLS=[];
@@ -512,7 +515,7 @@ const Cloud={on:false,user:null,db:null,state:'off',err:'',
       STATS={};st.forEach(d=>{const v=d.data();if(v.k)STATS[v.k]={n:v.n||0,ok:v.ok||0,ms:v.ms||0,drill:v.drill,last:v.last}});
       MISSES=[];ms.forEach(d=>MISSES.push(d.data()));
       const u=ud.data();
-      if(u){if(u.cfg)CFG=Object.assign({},DEF_CFG,u.cfg);if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
+      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
       else await this.saveUser();
       save('ll_stats',STATS);save('ll_misses',MISSES);this.state='synced';this.err='';
     }catch(e){this.state='error';this.err=e.message||String(e)}
@@ -554,9 +557,8 @@ const deadBlinds=(a,b)=>(a!=='SB'&&b!=='SB'?.25:0)+(a!=='BB'&&b!=='BB'?.5:0);
 
 function pfBuild(){
   const sub=pf.sub,heroes=[...pf.pos[sub]];if(!heroes.length)return null;
-  const open=CFG.openSize;
   for(let t=0;t<80;t++){
-    const H=pick(heroes),q={sub,H,seats:{},pot:.75,opts:[],pool:CLS,key:'',expl:[]};
+    const H=pick(heroes);let open=openFor(H);const q={sub,H,seats:{},pot:.75,opts:[],pool:CLS,key:'',expl:[]};
     POS.forEach(p=>q.seats[p]='');
     const foldBefore=p=>POS.slice(0,POS.indexOf(p)).forEach(x=>{if(!q.seats[x])q.seats[x]='Fold'});
     if(sub==='rfi'){
@@ -601,7 +603,7 @@ function pfBuild(){
       q.legend=[['raise','Raise'],['limp',H==='SB'?'Complete':'Over-limp'],['',H==='BB'?'Check':'Fold']];
     }else{
       const hi=POS.indexOf(H);if(hi<2)continue;const before=POS.slice(0,hi);
-      const oi=rnd(before.length-1),ci=oi+1+rnd(before.length-1-oi),O=before[oi],C=before[ci];
+      const oi=rnd(before.length-1),ci=oi+1+rnd(before.length-1-oi),O=before[oi],C=before[ci];open=openFor(O);
       const sq=rng(EP(O)?'squeeze.vsEP':'squeeze.vsLP'),cl=rng(H==='BB'?'sqcall.BB':H==='SB'?'sqcall.SB':'sqcall.IP');
       q.ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
       foldBefore(H);q.seats[O]='Open '+money(open);q.seats[C]='Call';
@@ -666,14 +668,14 @@ function pfAnswer(choice){
 const SCEN={srp_pfr:{l:'You opened, got called',pfr:true},srp_call:{l:'You called an open',pfr:false},tbp_call:{l:'You called a 3-bet',pfr:false},tbp_pfr:{l:'You 3-bet, got called',pfr:true},iso:{l:'Iso vs limper',pfr:true}};
 function flatters(O){return O==='SB'?['BB']:O==='BTN'?['SB','BB']:after(O).filter(p=>p!=='SB')}
 function buildScen(type){
-  const open=CFG.openSize;let H,V,heroSet,villSet,desc,pot,opener;
+  let open,H,V,heroSet,villSet,desc,pot,opener;
   if(type==='srp_pfr'||type==='srp_call'){
-    const O=pick(['UTG','HJ','CO','BTN','SB']),C=pick(flatters(O));opener=O;
+    const O=pick(['UTG','HJ','CO','BTN','SB']),C=pick(flatters(O));opener=O;open=openFor(O);
     const cs=villFlatSet(O,C),os=rng('rfi.'+O);pot=2*open+deadBlinds(O,C);
     if(type==='srp_pfr'){H=O;V=C;heroSet=os;villSet=cs;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> calls.`}
     else{H=C;V=O;heroSet=cs;villSet=os;desc=`<strong>${V}</strong> opens to ${money(open)}, you call in the <strong>${H}</strong>.`}
   }else if(type==='tbp_call'||type==='tbp_pfr'){
-    const O=pick(['UTG','HJ','CO','BTN','SB']),B=pick(after(O));opener=O;
+    const O=pick(['UTG','HJ','CO','BTN','SB']),B=pick(after(O));opener=O;open=openFor(O);
     const T=Math.max(CFG.tbMax,2*open-.5),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+O);pot=2*T+deadBlinds(O,B);
     if(type==='tbp_call'){H=O;V=B;heroSet=cs;villSet=ts;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> 3-bets to ${money(T)}, you call.`}
     else{H=B;V=O;heroSet=ts;villSet=cs;desc=`<strong>${V}</strong> opens to ${money(open)}, you 3-bet to ${money(T)} from the <strong>${H}</strong>, ${V} calls.`}
@@ -1076,7 +1078,7 @@ function openSettings(){
     <label class="f"><span>Timer<small>Answer before the bar runs out</small></span><input type="checkbox" id="s-timer" ${CFG.timerOn?'checked':''}></label>
     ${num('s-pf','Preflop seconds','',CFG.pfSec,1,2,60)}${num('s-rr','Range question seconds','Range builder gets 3×',CFG.rrSec,1,5,120)}
     ${num('s-mt','Math seconds','',CFG.mathSec,1,3,90)}${num('s-pp','Postflop seconds per spot','',CFG.postSec,1,10,180)}
-    ${num('s-open','Your open size ($)','Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}
+    ${num('s-open','Your open size ($)','UTG–BTN. Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}${num('s-sbopen','Your SB open size ($)','',CFG.sbOpen,.25,.75,3)}
     ${num('s-tbmin','Villain 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Villain 3-bet max ($)','Also the 3-bet size used in 3-bet pots',CFG.tbMax,.25,1,8)}
     <label class="f"><span>Auto-advance when correct<small>Preflop and math drills</small></span><input type="checkbox" id="s-auto" ${CFG.autoNext?'checked':''}></label>
     ${num('s-it','Equity samples per hand','Higher is slower and more precise',CFG.iters,100,200,3000)}
@@ -1085,7 +1087,7 @@ function saveSettings(){
   const v=id=>parseFloat($(id).value);
   const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
   CFG={timerOn:$('#s-timer').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
-    openSize:clamp(v('#s-open'),.75,2.5,1),tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
+    openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:2,tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
   if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;save('ll_cfg',CFG);Cloud.saveUser();closeSettings();show(cur)}
 function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
 
