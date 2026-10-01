@@ -53,4 +53,4 @@ The config values are safe to publish; they only identify the project. The rules
 
 ## Updating the app
 
-Edit `index.html`, commit and push. Open the app twice to pick up the change (the first launch refreshes the offline cache in the background). For an immediate update, bump `CACHE` in `sw.js` (for example `leak-lab-v2`).
+Edit `index.html`, commit and push. GitHub Pages redeploys in about a minute, and the app loads the new version on its next launch (it checks the network first and falls back to the offline copy after 3 seconds). If you change `sw.js` itself, bump `CACHE` (for example `leak-lab-v5`).
