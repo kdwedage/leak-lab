@@ -1,6 +1,6 @@
 // Offline cache: serve the last copy instantly, refresh it in the background (stale-while-revalidate).
 // Firestore traffic is never cached here; the Firebase SDK queues writes offline on its own.
-const CACHE = 'leak-lab-v1';
+const CACHE = 'leak-lab-v2';
 const SHELL = ['./', 'index.html', 'firebase-config.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

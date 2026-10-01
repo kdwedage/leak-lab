@@ -1,12 +1,11 @@
-// Paste your Firebase web app config here.
-// Firebase console → Project settings (gear) → General → Your apps → Web app → "SDK setup and configuration" → Config.
-// These values are not secret: they only identify your project. Your data is protected by firestore.rules.
-// While apiKey still starts with PASTE, the app runs in local-only mode.
+// Firebase web app config (Firebase console → Project settings → General → Your apps).
+// These values are not secret: they only identify the project. Your data is protected by firestore.rules.
+// Never put a service-account / admin SDK key in this file or anywhere in this repo.
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBPJDqx6zUV55c6_SULXeSnxyFxh24VdiI",
+  authDomain: "leak-lab.firebaseapp.com",
+  projectId: "leak-lab",
+  storageBucket: "leak-lab.firebasestorage.app",
+  messagingSenderId: "847109090732",
+  appId: "1:847109090732:web:9a8217ebe78019072d9e09"
 };
