@@ -44,6 +44,16 @@ The config values are safe to publish; they only identify the project. The rules
 2. Share → **Add to Home Screen** → Add.
 3. Open it from the home screen → gear icon → **Sync** → Create account (first device) or Sign in (other devices).
 
+## Game settings
+
+Settings (gear icon) → **Game**: table size (6-max or 9-max), ante per player, rake % and cap, your open sizes and the villain 3-bet size range.
+
+- **9-max** adds UTG, UTG+1, UTG+2 and LJ. The three earliest seats have their own charts (`rfi.UTG9`, `rfi.UTG1`, `rfi.UTG2`, plus `3bet_vs.EP9`, `flat.vsEP9`, `bbdef.vsEP9`); LJ uses the 6-max UTG charts.
+- **Ante** goes into every pot. When total antes reach 1bb, opening and BB-defend ranges widen one step (two steps at 2bb).
+- **Rake** is taken from pots that see a flop (no flop, no drop). It raises the equity you need to call in every pot-odds calculation, and at 4% or more it tightens cold-calls and BB defence one step.
+
+A step moves each edge of a range by one notch (K9s+ ↔ K8s+, 77-JJ ↔ 66-JJ). The Charts tab shows the base charts and notes when your settings adjust them.
+
 ## How sync works
 
 - Every answer is logged to Firestore under `users/{your uid}`: one document per spot in `stats` (attempt, correct and time counters) and one per mistake in `misses`. Settings and edited charts live on the user document.

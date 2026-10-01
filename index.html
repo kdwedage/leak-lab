@@ -89,7 +89,8 @@ h2.vt{font:850 30px/1 var(--f-display);font-stretch:70%;text-transform:uppercase
 .shead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .tag{font:600 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .pot{font:600 14px var(--f-mono);font-variant-numeric:tabular-nums}
-.seats{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+.seats{display:grid;grid-template-columns:repeat(var(--n,6),1fr);gap:4px}
+.seats.n9{gap:3px}.seats.n9 .seat{padding:5px 1px}.seats.n9 .seat b{font-size:12px}.seats.n9 .seat span{font-size:9px}
 .seat{border:1px solid var(--line);border-radius:9px;padding:6px 2px;text-align:center;min-width:0;background:var(--bg)}
 .seat b{display:block;font:800 14px/1.1 var(--f-display);font-stretch:80%}
 .seat span{display:block;font:500 10.5px/1.25 var(--f-mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:13px}
@@ -224,7 +225,7 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 
 <div class="app">
   <header class="hud">
-    <div class="brand">Leak Lab<small>NL50 · $0.25/$0.50 · 6-max · 100bb</small></div>
+    <div class="brand">Leak Lab<small id="brand-sub">NL50 · $0.25/$0.50 · 6-max · 100bb</small></div>
     <div class="sess" id="sess"></div>
     <button class="iconbtn" id="openSettings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
@@ -254,8 +255,9 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 <script>
 // ================= core utils =================
 const R='23456789TJQKA', SYM=['♠','♥','♦','♣'];
-const POS=['UTG','HJ','CO','BTN','SB','BB'];
-const PO={SB:0,BB:1,UTG:2,HJ:3,CO:4,BTN:5};
+// Seats in preflop order; PO is postflop order (SB acts first). Both follow the table-size setting via setTable().
+const TABLES={6:['UTG','HJ','CO','BTN','SB','BB'],9:['UTG','UTG1','UTG2','LJ','HJ','CO','BTN','SB','BB']};
+let POS=TABLES[6],PO={};
 const rnd=n=>Math.floor(Math.random()*n), pick=a=>a[rnd(a.length)];
 const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
 const money=x=>'$'+(Math.round(x*100)/100).toFixed(2);
@@ -266,11 +268,24 @@ const $=s=>document.querySelector(s);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
-const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:2,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:2,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
 // v2: default open became $1.25 ($1.50 from the SB); older saved settings are upgraded once.
 function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5;c.v=2}return c}
 let CFG=migrateCfg(load('ll_cfg',{}));
 const openFor=p=>p==='SB'?CFG.sbOpen:CFG.openSize;
+function setTable(){POS=TABLES[CFG.table===9?9:6];PO={SB:0,BB:1};POS.slice(0,-2).forEach((p,i)=>PO[p]=i+2)}
+setTable();
+const is9=()=>CFG.table===9;
+// Chart lookups: 9-max early seats use their own charts; the 9-max LJ plays like 6-max UTG.
+const rk=p=>is9()?({UTG:'UTG9',UTG1:'UTG1',UTG2:'UTG2',LJ:'UTG'}[p]||p):p;   // opening chart for a seat
+const rk3=p=>is9()?({UTG:'EP9',UTG1:'EP9',UTG2:'EP9',LJ:'UTG'}[p]||p):p;     // charts keyed by the opener (3-bet, flat, BB defend)
+// Antes and rake
+const anteTotal=()=>CFG.ante*POS.length;
+const blindsPot=()=>.75+anteTotal();
+const rakeOf=pot=>CFG.rakePct>0?Math.min(pot*CFG.rakePct/100,CFG.rakeCap>0?CFG.rakeCap:Infinity):0;
+const needEq=(call,finalPot)=>call/(finalPot-rakeOf(finalPot));   // equity needed when the pot you win is raked
+const anteSteps=()=>{const bb=anteTotal()/.5;return bb>=2?2:bb>=1?1:0};   // total antes ≥1bb widen one step, ≥2bb two
+const rakeSteps=()=>CFG.rakePct>=4?1:0;
 
 // ================= hand classes & ranges =================
 const CLS=[];
@@ -313,6 +328,12 @@ const DEF_RANGES={
  'rfi.CO':'22+, A2s+, K4s+, Q7s+, J7s+, T7s+, 96s+, 86s+, 75s+, 64s+, 54s, A7o+, A5o, K9o+, Q9o+, J9o+, T9o',
  'rfi.BTN':'22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
  'rfi.SB':'22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o+, K8o+, Q9o+, J9o+, T9o',
+ 'rfi.UTG9':'55+, A9s+, A5s, KTs+, QTs+, JTs, T9s, AJo+, KQo',
+ 'rfi.UTG1':'44+, A8s+, A5s-A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo',
+ 'rfi.UTG2':'33+, A8s+, A5s-A4s, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo+, KJo+',
+ '3bet_vs.EP9':'QQ+, AKs, AKo, A5s',
+ 'flat.vsEP9':'22-JJ, AJs-AQs, KQs, KJs, QJs, JTs, T9s, AQo',
+ 'bbdef.vsEP9':'22+, A2s+, K9s+, Q9s+, J9s+, T8s+, 98s, 87s, 76s, 65s, AJo+, KQo',
  '3bet_vs.UTG':'QQ+, AKs, AKo, A5s-A4s',
  '3bet_vs.HJ':'JJ+, AQs+, AKo, KQs, A5s-A4s',
  '3bet_vs.CO':'TT+, AJs+, KQs, KJs, QJs, AQo+, A5s-A3s',
@@ -352,7 +373,9 @@ const DEF_RANGES={
  'fish.limpcall':'22-TT, A2s-AJs, K2s+, Q6s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o-AJo, K9o+, Q9o+, J9o+, T9o, 98o'
 };
 const RANGE_LABELS={
- 'rfi.UTG':'Open · UTG','rfi.HJ':'Open · HJ','rfi.CO':'Open · CO','rfi.BTN':'Open · BTN','rfi.SB':'Open · SB',
+ 'rfi.UTG9':'Open · UTG (9-max)','rfi.UTG1':'Open · UTG+1 (9-max)','rfi.UTG2':'Open · UTG+2 (9-max)',
+ '3bet_vs.EP9':'3-bet vs UTG/UTG+1/UTG+2 open (9-max)','flat.vsEP9':'Cold-call IP vs UTG–UTG+2 (9-max)','bbdef.vsEP9':'BB defend vs UTG–UTG+2 (9-max, incl. 3-bets)',
+ 'rfi.UTG':'Open · UTG (6-max) / LJ (9-max)','rfi.HJ':'Open · HJ','rfi.CO':'Open · CO','rfi.BTN':'Open · BTN','rfi.SB':'Open · SB',
  '3bet_vs.UTG':'3-bet vs UTG open','3bet_vs.HJ':'3-bet vs HJ open','3bet_vs.CO':'3-bet vs CO open','3bet_vs.BTN':'3-bet vs BTN open','3bet_vs.SB':'BB 3-bet vs SB open',
  'flat.vsUTG':'Cold-call IP vs UTG','flat.vsHJ':'Cold-call IP vs HJ','flat.vsCO':'BTN cold-call vs CO','flat.SBvsBTN':'SB flat vs BTN',
  'bbdef.vsUTG':'BB defend vs UTG (incl. 3-bets)','bbdef.vsHJ':'BB defend vs HJ (incl. 3-bets)','bbdef.vsCO':'BB defend vs CO (incl. 3-bets)','bbdef.vsBTN':'BB defend vs BTN (incl. 3-bets)','bbdef.vsSB':'BB defend vs SB (incl. 3-bets)',
@@ -371,6 +394,14 @@ function rng(key){const s=customRanges[key]??DEF_RANGES[key];if(!_rc[key]||_rc[k
 const minus=(a,b)=>new Set([...a].filter(x=>!b.has(x)));
 const inter=(a,b)=>new Set([...a].filter(x=>b.has(x)));
 const union=(...ss)=>{const o=new Set();ss.forEach(s=>s.forEach(x=>o.add(x)));return o};
+// One "step" moves every edge of a range by one notch: K9s+ ↔ K8s+, 77-JJ ↔ 66-JJ. Used for ante (wider) and rake (tighter).
+function stronger(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]);if(h===l)return h<12?R[h+1]+R[h+1]:null;return l+1<h?R[h]+R[l+1]+c[2]:null}
+function weaker(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]);if(h===l)return h>0?R[h-1]+R[h-1]:null;return l>0?R[h]+R[l-1]+c[2]:null}
+function adjust(set,n){let s=set;for(let i=0;i<Math.abs(n);i++){const o=new Set(s);
+  if(n>0)CLS.forEach(c=>{if(!s.has(c)){const st=stronger(c);if(st&&s.has(st))o.add(c)}});
+  else s.forEach(c=>{const w=weaker(c);if(w&&!s.has(w))o.delete(c)});
+  s=o}return s}
+const rfiSet=p=>adjust(rng('rfi.'+rk(p)),anteSteps());
 
 // ================= evaluator =================
 function straightHigh(m){for(let h=12;h>=4;h--){const w=0x1F<<(h-4);if((m&w)===w)return h}return (m&0x100F)===0x100F?3:-1}
@@ -468,7 +499,7 @@ function record(key,ok,ms,drill,miss){
   sess.n++;if(ok){sess.ok++;sess.streak++;sess.best=Math.max(sess.best,sess.streak)}else sess.streak=0;
   save('ll_stats',STATS);save('ll_misses',MISSES);hud();
   Cloud.log(key,ok,Math.round(Math.min(ms||0,120000)),drill,m)}
-function hud(){$('#sess').innerHTML=`<b>${sess.ok}/${sess.n}</b> ${sess.n?pct(sess.ok/sess.n):''}<br>streak <b>${sess.streak}</b> · best ${sess.best}<span class="sync ${Cloud.cls()}" id="sync-badge">${Cloud.label()}</span>`}
+function hud(){const bs=$('#brand-sub');if(bs)bs.textContent=`NL50 · $0.25/$0.50 · ${CFG.table}-max${CFG.ante?` · ante ${money(CFG.ante)}`:''}${CFG.rakePct?` · ${CFG.rakePct}% rake`:' · no rake'}`;$('#sess').innerHTML=`<b>${sess.ok}/${sess.n}</b> ${sess.n?pct(sess.ok/sess.n):''}<br>streak <b>${sess.streak}</b> · best ${sess.best}<span class="sync ${Cloud.cls()}" id="sync-badge">${Cloud.label()}</span>`}
 
 // ================= cloud sync (Firebase) =================
 // Answers made while signed out (or before this version) wait in PENDING and are pushed as increments on sign-in.
@@ -515,11 +546,11 @@ const Cloud={on:false,user:null,db:null,state:'off',err:'',
       STATS={};st.forEach(d=>{const v=d.data();if(v.k)STATS[v.k]={n:v.n||0,ok:v.ok||0,ms:v.ms||0,drill:v.drill,last:v.last}});
       MISSES=[];ms.forEach(d=>MISSES.push(d.data()));
       const u=ud.data();
-      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
+      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);setTable();if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
       else await this.saveUser();
       save('ll_stats',STATS);save('ll_misses',MISSES);this.state='synced';this.err='';
     }catch(e){this.state='error';this.err=e.message||String(e)}
-    hud();if(cur==='stats'||cur==='charts')RENDER[cur]()},
+    hud();if(cur==='stats'||cur==='charts'||(cur==='preflop'&&pf.table!==CFG.table))RENDER[cur]()},
   saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges}).catch(e=>this.fail(e))},
   async resetStats(){
     if(!this.user)return;const r=this.ref();
@@ -541,46 +572,49 @@ async function authAct(kind){
 // ================= preflop =================
 const COLOR={Raise:'raise','4-Bet':'four','3-Bet':'four',Call:'call',Limp:'limp',Complete:'limp',Fold:'',Check:''};
 const PF_SUBS=[['rfi','RFI'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller']];
-const PF_HEROES={rfi:['UTG','HJ','CO','BTN','SB'],'3bet':['UTG','HJ','CO','BTN','SB'],limp:['HJ','CO','BTN','SB','BB'],squeeze:['CO','BTN','SB','BB']};
-const pf={sub:'rfi',pos:{},vill:new Set(['HJ','CO','BTN','SB','BB']),q:null,last:null};
-Object.keys(PF_HEROES).forEach(k=>pf.pos[k]=new Set(PF_HEROES[k]));
+const pfHeroes=sub=>({rfi:POS.slice(0,-1),'3bet':POS.slice(0,-1),limp:POS.slice(1),squeeze:POS.slice(2)})[sub];
+const pf={sub:'rfi',pos:{},vill:new Set(),q:null,last:null,table:null};
+function pfResetSeats(){['rfi','3bet','limp','squeeze'].forEach(k=>pf.pos[k]=new Set(pfHeroes(k)));pf.vill=new Set(POS.slice(1));pf.table=CFG.table}
 const after=h=>POS.slice(POS.indexOf(h)+1);
 const isIP=(a,b)=>PO[a]>PO[b];
-const EP=p=>p==='UTG'||p==='HJ';
+const EP=p=>['UTG','UTG1','UTG2','LJ','HJ'].includes(p);
 const fourBetSet=o=>rng(EP(o)?'4bet.EP':'4bet.LP');
 function call3bSet(opener,tb,ratio){
   const ip=isIP(opener,tb);let s=rng(ip?(EP(opener)?'call3b.IP.EP':'call3b.IP.LP'):'call3b.OOP');
   if(ratio!=null){if(ratio<=2.5)s=union(s,rng('call3b.addMid'));if(ratio<=2.0)s=union(s,rng('call3b.addMin'))}
-  return minus(inter(s,rng('rfi.'+opener)),fourBetSet(opener))}
-function villFlatSet(opener,v){const s=v==='BB'?rng('bbdef.vs'+opener):v==='SB'?rng('flat.SBvsBTN'):rng('flat.vs'+opener);return minus(s,rng('3bet_vs.'+opener))}
+  return minus(inter(s,rfiSet(opener)),fourBetSet(opener))}
+function villFlatSet(opener,v){
+  const s=v==='BB'?adjust(rng('bbdef.vs'+rk3(opener)),anteSteps()-rakeSteps()):adjust(v==='SB'?rng('flat.SBvsBTN'):rng('flat.vs'+rk3(opener)),-rakeSteps());
+  return minus(s,rng('3bet_vs.'+rk3(opener)))}
 const deadBlinds=(a,b)=>(a!=='SB'&&b!=='SB'?.25:0)+(a!=='BB'&&b!=='BB'?.5:0);
 
 function pfBuild(){
   const sub=pf.sub,heroes=[...pf.pos[sub]];if(!heroes.length)return null;
   for(let t=0;t<80;t++){
-    const H=pick(heroes);let open=openFor(H);const q={sub,H,seats:{},pot:.75,opts:[],pool:CLS,key:'',expl:[]};
+    const H=pick(heroes);let open=openFor(H);const q={sub,H,seats:{},pot:blindsPot(),opts:[],pool:CLS,key:'',expl:[]};
     POS.forEach(p=>q.seats[p]='');
     const foldBefore=p=>POS.slice(0,POS.indexOf(p)).forEach(x=>{if(!q.seats[x])q.seats[x]='Fold'});
     if(sub==='rfi'){
-      const set=rng('rfi.'+H);q.ansFn=c=>set.has(c)?'Raise':'Fold';q.opts=['Raise','Fold'];foldBefore(H);
+      const set=rfiSet(H);q.ansFn=c=>set.has(c)?'Raise':'Fold';q.opts=['Raise','Fold'];foldBefore(H);
       q.prompt=`Folded to you in the <strong>${H}</strong>. Open to ${money(open)} or fold?`;
       q.key=`Preflop · RFI · ${H}`;q.tag='Raise first in';
       q.expl.push(`${H} opens ${pct(setCombos(set)/1326)} of hands (${setCombos(set)} combos).`);
+      if(anteSteps())q.expl.push('Antes add dead money, so this is the base chart widened one step.');
       if(H==='SB')q.expl.push('SB is raise-or-fold here. Raise bigger (3x) because you play the hand out of position.');
       q.legend=[['raise','Open'],['','Fold']];
     }else if(sub==='3bet'){
       const vills=after(H).filter(v=>pf.vill.has(v));if(!vills.length)continue;const V=pick(vills);
       const minC=Math.max(Math.round(CFG.tbMin*100),Math.round((2*open-.5)*100)),maxC=Math.max(minC,Math.round(CFG.tbMax*100)),sizes=[];
       for(let c=minC;c<=maxC;c+=25)sizes.push(c/100);
-      const T=pick(sizes),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rng('rfi.'+H);
+      const T=pick(sizes),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rfiSet(H);
       q.ansFn=c=>!rfi.has(c)?null:four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';
       q.pool=[...rfi];q.opts=['4-Bet','Call','Fold'];foldBefore(H);
       q.seats[H]='Open '+money(open);after(H).forEach(p=>q.seats[p]=p===V?'3-Bet '+money(T):(POS.indexOf(p)<POS.indexOf(V)?'Fold':''));
-      const dead=deadBlinds(H,V),toCall=T-open,final=2*T+dead,need=toCall/final,ip=isIP(H,V);
+      const dead=deadBlinds(H,V)+anteTotal(),toCall=T-open,final=2*T+dead,need=needEq(toCall,final),ip=isIP(H,V);
       q.pot=open+T+dead;q.toCall=toCall;
       q.prompt=`You open <strong>${H}</strong> to ${money(open)}. <strong>${V}</strong> 3-bets to ${money(T)} (${ratio.toFixed(2).replace(/0$/,'')}x). You'll be ${ip?'in position':'out of position'}.`;
       q.key=`Preflop · vs 3-bet · ${H} vs ${V}`;q.tag='Facing a 3-bet';
-      q.expl.push(`Price: call ${money(toCall)} to play a ${money(final)} pot, so you need ${pct(need)} equity before implied odds.`);
+      q.expl.push(`Price: call ${money(toCall)} to play a ${money(final)} pot, so you need ${pct(need)} equity before implied odds${rakeOf(final)?` (you win ${money(final-rakeOf(final))} after ${money(rakeOf(final))} rake)`:''}.`);
       q.expl.push(ratio<=2?'Min-3-bet: continue with your whole opening range. Folding anything here is a leak.':ratio<=2.5?'Small 3-bet: add set-mining pairs, suited aces and suited connectors to your calls.':'Standard size: call only hands that play well in a 3-bet pot; keep 4-bets to value plus A5s from late position.');
       q.expl.push(`NL50 read: ${EP(V)||V==='HJ'?'early-position 3-bets are very strong':'blind 3-bets vs late opens are wider but still value-leaning'} at this stake. Against a nit, fold the bottom of the calling range.`);
       q.legend=[['four','4-Bet'],['call','Call'],['','Fold'],['na','Not in your open']];
@@ -590,12 +624,12 @@ function pfBuild(){
       let iso,lp;
       if(H==='BB'){iso=rng(n>=2?'iso.BB2':'iso.BB1');lp=null;q.opts=['Raise','Check']}
       else if(H==='SB'){iso=rng('iso.SB');lp=rng('limp.SB');q.opts=['Raise','Complete','Fold']}
-      else if(H==='HJ'){iso=rng('iso.MP');lp=rng('limp.MP');q.opts=['Raise','Limp','Fold']}
+      else if(H!=='CO'&&H!=='BTN'){iso=rng('iso.MP');lp=rng('limp.MP');q.opts=['Raise','Limp','Fold']}
       else{iso=rng(n>=2?'iso.LP2':'iso.LP1');lp=rng(n>=2?'limp.LP2':'limp.LP1');q.opts=['Raise','Limp','Fold']}
       q.ansFn=c=>iso.has(c)?'Raise':H==='BB'?'Check':lp.has(c)?(H==='SB'?'Complete':'Limp'):'Fold';
       L.forEach(p=>q.seats[p]='Limp');foldBefore(H);
       const oop=H==='SB'||H==='BB',size=2+.5*n+(oop?.5:0);
-      q.pot=.75+.5*n;q.toCall=H==='BB'?0:H==='SB'?.25:.5;
+      q.pot=blindsPot()+.5*n;q.toCall=H==='BB'?0:H==='SB'?.25:.5;
       q.prompt=`${n} limper${n>1?'s':''} (${L.join(', ')}). You're in the <strong>${H}</strong>. Iso size would be ${money(size)}.`;
       q.key=`Preflop · Limpers · ${H} vs ${n>=2?'2+':'1'}`;q.tag='Facing limpers';
       q.expl.push(`Iso sizing: 4bb + 1bb per extra limper${oop?' + 1bb out of position':''} = ${money(size)}.`);
@@ -608,7 +642,7 @@ function pfBuild(){
       q.ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
       foldBefore(H);q.seats[O]='Open '+money(open);q.seats[C]='Call';
       const oop=H==='SB'||H==='BB',size=open*(4+(oop?1:0));
-      q.pot=.75+2*open;q.toCall=open-(H==='SB'?.25:H==='BB'?.5:0);
+      q.pot=blindsPot()+2*open;q.toCall=open-(H==='SB'?.25:H==='BB'?.5:0);
       q.prompt=`<strong>${O}</strong> opens ${money(open)}, <strong>${C}</strong> calls. You're in the <strong>${H}</strong>. Squeeze size would be ${money(size)}.`;
       q.key=`Preflop · Squeeze · ${H}`;q.tag='Open + caller';
       q.expl.push(`Squeeze to about ${money(size)} (3x the open + 1x per caller${oop?' + 1x out of position':''}).`);
@@ -616,6 +650,7 @@ function pfBuild(){
       if(H==='BB')q.expl.push(`BB closes the action and only needs ${money(open-.5)} more, so overcall wide with suited and connected hands.`);
       q.legend=[['four','Squeeze'],['call','Call'],['','Fold']];
     }
+    if(is9())q.key+=' (9-max)';
     return q}
   return null}
 function pfPickHand(q){
@@ -630,12 +665,13 @@ function pfPickHand(q){
   pf.last=cls;return{cls,cards:pick(classCombos(cls))}}
 
 function renderPF(){
+  if(pf.table!==CFG.table)pfResetSeats();
   $('#v-preflop').innerHTML=`
   <h2 class="vt">Preflop</h2>
   <div class="toolbar">
     ${seg(PF_SUBS,pf.sub,'pfsub')}
-    <div class="chips"><span class="lab">Your seat</span>${PF_HEROES[pf.sub].map(p=>chip(p,pf.pos[pf.sub].has(p),'pfpos')).join('')}</div>
-    ${pf.sub==='3bet'?`<div class="chips"><span class="lab">3-bettor</span>${['HJ','CO','BTN','SB','BB'].map(p=>chip(p,pf.vill.has(p),'pfvill')).join('')}</div>`:''}
+    <div class="chips"><span class="lab">Your seat</span>${pfHeroes(pf.sub).map(p=>chip(p,pf.pos[pf.sub].has(p),'pfpos')).join('')}</div>
+    ${pf.sub==='3bet'?`<div class="chips"><span class="lab">3-bettor</span>${POS.slice(1).map(p=>chip(p,pf.vill.has(p),'pfvill')).join('')}</div>`:''}
   </div>
   <div class="spot" id="pf-spot"></div>`;
   pfNext()}
@@ -645,7 +681,7 @@ function pfNext(){
   const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);pf.q=q;
   el.innerHTML=`${timerHTML()}
     <div class="shead"><span class="tag">${q.tag}</span><span class="pot">Pot ${money(q.pot)}${q.toCall?` · to call ${money(q.toCall)}`:''}</span></div>
-    <div class="seats">${POS.map(p=>{const a=q.seats[p];return `<div class="seat ${p===q.H?'me':''} ${a==='Fold'?'folded':a?'act':''}"><b>${p}</b><span>${p===q.H?(a?a:'You'):(a||(POS.indexOf(p)>POS.indexOf(q.H)?'·':''))}</span></div>`}).join('')}</div>
+    <div class="seats n${POS.length}" style="--n:${POS.length}">${POS.map(p=>{const a=q.seats[p];return `<div class="seat ${p===q.H?'me':''} ${a==='Fold'?'folded':a?'act':''}"><b>${p}</b><span>${p===q.H?(a?(POS.length>6?a.replace(/ \$[\d.]+$/,''):a):'You'):((POS.length>6&&a?a.replace(/ \$[\d.]+$/,''):a)||(POS.indexOf(p)>POS.indexOf(q.H)?'·':''))}</span></div>`}).join('')}</div>
     <div class="hand">${cardsHTML(q.cards)}</div>
     <p class="prompt">${q.prompt}</p>
     <div class="acts ${q.opts.length===2?'two':''}">${q.opts.map((o,i)=>`<button class="act a-${COLOR[o]||'fold'}" data-pfans="${o}"><kbd>${i+1}</kbd>${o}</button>`).join('')}</div>
@@ -653,7 +689,7 @@ function pfNext(){
   Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>pfAnswer(null))}
 function pfAnswer(choice){
   const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;
-  record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`);
+  record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H,table:CFG.table},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`);
   const acts=$('#pf-spot .acts');acts.classList.add('done');
   acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(b.dataset.pfans===q.ans)b.classList.add('right')});
   const fb=$('#pf-fb');fb.hidden=false;
@@ -670,22 +706,22 @@ function flatters(O){return O==='SB'?['BB']:O==='BTN'?['SB','BB']:after(O).filte
 function buildScen(type){
   let open,H,V,heroSet,villSet,desc,pot,opener;
   if(type==='srp_pfr'||type==='srp_call'){
-    const O=pick(['UTG','HJ','CO','BTN','SB']),C=pick(flatters(O));opener=O;open=openFor(O);
-    const cs=villFlatSet(O,C),os=rng('rfi.'+O);pot=2*open+deadBlinds(O,C);
+    const O=pick(POS.slice(0,-1)),C=pick(flatters(O));opener=O;open=openFor(O);
+    const cs=villFlatSet(O,C),os=rfiSet(O);pot=2*open+deadBlinds(O,C)+anteTotal();
     if(type==='srp_pfr'){H=O;V=C;heroSet=os;villSet=cs;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> calls.`}
     else{H=C;V=O;heroSet=cs;villSet=os;desc=`<strong>${V}</strong> opens to ${money(open)}, you call in the <strong>${H}</strong>.`}
   }else if(type==='tbp_call'||type==='tbp_pfr'){
-    const O=pick(['UTG','HJ','CO','BTN','SB']),B=pick(after(O));opener=O;open=openFor(O);
-    const T=Math.max(CFG.tbMax,2*open-.5),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+O);pot=2*T+deadBlinds(O,B);
+    const O=pick(POS.slice(0,-1)),B=pick(after(O));opener=O;open=openFor(O);
+    const T=Math.max(CFG.tbMax,2*open-.5),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+rk3(O));pot=2*T+deadBlinds(O,B)+anteTotal();
     if(type==='tbp_call'){H=O;V=B;heroSet=cs;villSet=ts;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> 3-bets to ${money(T)}, you call.`}
     else{H=B;V=O;heroSet=ts;villSet=cs;desc=`<strong>${V}</strong> opens to ${money(open)}, you 3-bet to ${money(T)} from the <strong>${H}</strong>, ${V} calls.`}
   }else{
-    V=pick(['UTG','HJ']);H=pick(['CO','BTN']);heroSet=rng('iso.LP1');villSet=rng('fish.limpcall');pot=2*2.5+.75;opener=V;
+    V=pick(POS.filter(EP));H=pick(['CO','BTN']);heroSet=rng('iso.LP1');villSet=rng('fish.limpcall');pot=2*2.5+blindsPot();opener=V;
     desc=`<strong>${V}</strong> (recreational) limps, you iso to $2.50 from the <strong>${H}</strong>, ${V} calls.`}
   return{type,H,V,heroSet,villSet,desc,pot,opener,heroIP:isIP(H,V),pfr:SCEN[type].pfr}}
 function whyNotInRange(sc,cls){
   if(sc.type==='srp_pfr'||sc.type==='tbp_pfr'&&false){}
-  if(sc.type==='srp_pfr'){return rng('3bet_vs.'+sc.H).has(cls)?`${sc.V} would 3-bet ${cls} preflop, not flat`:`${sc.V} folds ${cls} preflop vs a ${sc.H} open`}
+  if(sc.type==='srp_pfr'){return rng('3bet_vs.'+rk3(sc.H)).has(cls)?`${sc.V} would 3-bet ${cls} preflop, not flat`:`${sc.V} folds ${cls} preflop vs a ${sc.H} open`}
   if(sc.type==='srp_call')return `${cls} isn't in a ${sc.V} opening range`;
   if(sc.type==='tbp_call')return `${cls} isn't in ${sc.V}'s 3-bet range vs ${sc.H}`;
   if(sc.type==='tbp_pfr')return fourBetSet(sc.V).has(cls)?`${sc.V} would 4-bet ${cls}`:`${sc.V} folds ${cls} to a 3-bet (or never opens it)`;
@@ -751,7 +787,7 @@ function renderRR(){
     ${seg([['read','Read the spot'],['build','Build the range']],rr.mode,'rrmode')}
     ${rr.mode==='read'?`<div class="chips"><span class="lab">Pot type</span>${Object.entries(SCEN).map(([k,v])=>chip(v.l,rr.types.has(k),'rrtype',k)).join('')}</div>
     <div class="chips"><span class="lab">Flop line</span>${chip('Include villain action',rr.flopAct,'rrflop','1')}</div>`:
-    `<div class="chips"><span class="lab">Range</span><select id="rr-target"><option value="random">Random</option>${BUILD.map((b,i)=>`<option value="${i}" ${String(i)===rr.target?'selected':''}>${b.d}</option>`).join('')}</select></div>`}
+    `<div class="chips"><span class="lab">Range</span><select id="rr-target"><option value="random">Random</option>${getBuild().map((b,i)=>`<option value="${i}" ${String(i)===rr.target?'selected':''}>${b.d}</option>`).join('')}</select></div>`}
   </div>
   <div class="spot" id="rr-spot"></div>`;
   rr.mode==='read'?rrNext():rbNext()}
@@ -797,18 +833,18 @@ function rrBreakdown(s){
   ${legendHTML([['four','Two pair+'],['raise','Overpair / top pair'],['limp','Weaker pair'],['draw','Draws'],['air','Air'],['out','Preflop range, gone after flop action']])}`}
 
 // ---- range builder
-const BUILD=[
-  ...['UTG','HJ','CO','BTN','SB'].map(p=>({d:`${p} open-raise`,set:()=>rng('rfi.'+p)})),
-  ...['UTG','HJ','CO','BTN','SB'].map(p=>({d:`BB flat vs ${p} open`,set:()=>villFlatSet(p,'BB')})),
-  ...['UTG','HJ','CO','BTN'].map(p=>({d:`3-bet vs ${p} open`,set:()=>rng('3bet_vs.'+p)})),
-  {d:'HJ flat vs UTG open',set:()=>villFlatSet('UTG','HJ')},
+function getBuild(){const ops=POS.slice(0,-1),pre=POS[POS.indexOf('HJ')-1];return[
+  ...ops.map(p=>({d:`${p} open-raise`,set:()=>rfiSet(p)})),
+  ...ops.map(p=>({d:`BB flat vs ${p} open`,set:()=>villFlatSet(p,'BB')})),
+  ...ops.filter(p=>p!=='SB').map(p=>({d:`3-bet vs ${p} open`,set:()=>rng('3bet_vs.'+rk3(p))})),
+  {d:`HJ flat vs ${pre} open`,set:()=>villFlatSet(pre,'HJ')},
   {d:'BTN flat vs CO open',set:()=>villFlatSet('CO','BTN')},
-  {d:'CO open, call BB 3-bet to $3',set:()=>call3bSet('CO','BB',3)},
-  {d:'UTG open, call BTN 3-bet to $3',set:()=>call3bSet('UTG','BTN',3)},
-  {d:'Fish limp-call (model)',set:()=>rng('fish.limpcall')}];
+  {d:'CO open, call BB 3-bet to $3',set:()=>call3bSet('CO','BB',3/openFor('CO'))},
+  {d:'UTG open, call BTN 3-bet to $3',set:()=>call3bSet('UTG','BTN',3/openFor('UTG'))},
+  {d:'Fish limp-call (model)',set:()=>rng('fish.limpcall')}]}
 let painting=false,paintVal=true;
 function rbNext(){
-  const i=rr.target==='random'?rnd(BUILD.length):+rr.target,b=BUILD[i];
+  const BL=getBuild(),i=rr.target==='random'||+rr.target>=BL.length?rnd(BL.length):+rr.target,b=BL[i];
   rr.build={i,d:b.d,target:b.set(),sel:new Set(),done:false};
   const el=$('#rr-spot');
   el.innerHTML=`${timerHTML()}<div class="shead"><span class="tag">Paint the range</span><span class="pot" id="rb-n">0 combos · 0%</span></div>
@@ -846,15 +882,15 @@ function optsNum(correct,cands,fmt,step){
   return shuffle(o).sort((a,b)=>a-b).map(v=>fmt(v))}
 function genMath(type){
   if(type==='pot'){
-    const open=pick([1,1.25,1.5]),c={SB:.25,BB:.5},lines=[];
-    const oi=rnd(5),O=POS[oi];c[O]=open;lines.push(`${O} raises to ${money(open)}`);let active=[O];
-    for(let i=oi+1;i<6;i++){const p=POS[i];if(Math.random()<.28&&active.length<3){c[p]=open;active.push(p);lines.push(`${p} calls`)}}
+    const open=pick([1,1.25,1.5]),c={SB:.25,BB:.5},lines=[],ante=anteTotal();if(ante)lines.push(`everyone antes ${money(CFG.ante)}`);
+    const oi=rnd(POS.length-1),O=POS[oi];c[O]=open;lines.push(`${O} raises to ${money(open)}`);let active=[O];
+    for(let i=oi+1;i<POS.length;i++){const p=POS[i];if(Math.random()<.28&&active.length<3){c[p]=open;active.push(p);lines.push(`${p} calls`)}}
     let threeB=false;
     if(active.length===1){
-      if(Math.random()<.4&&oi<5){const B=pick(POS.slice(oi+1)),T=r05(open*pick([3,3.5,4]));c[B]=T;c[O]=T;lines.push(`${B} 3-bets to ${money(T)}`,`${O} calls`);active=[O,B];threeB=true}
+      if(Math.random()<.4&&oi<POS.length-1){const B=pick(POS.slice(oi+1)),T=r05(open*pick([3,3.5,4]));c[B]=T;c[O]=T;lines.push(`${B} 3-bets to ${money(T)}`,`${O} calls`);active=[O,B];threeB=true}
       else if(O!=='BB'){c.BB=open;active.push('BB');lines.push(`BB calls`)}}
     lines.push('everyone else folds');
-    let pot=Object.values(c).reduce((a,b)=>a+b,0),last=0;const pre=pot;
+    let pot=Object.values(c).reduce((a,b)=>a+b,0)+ante,last=0;const pre=pot;
     const dead=['SB','BB'].filter(p=>!active.includes(p)).reduce((a,p)=>a+c[p],0);
     let flop=false;
     if(Math.random()<.6){flop=true;const order=active.slice().sort((a,b)=>PO[a]-PO[b]);
@@ -862,14 +898,14 @@ function genMath(type){
       if(order.length>1&&Math.random()<.4){const r=r05(b*pick([2.5,3,3.5]));lines.push(`${order[1]} raises to ${money(r)}`);pot+=r;last=r}
       else if(order.length>2&&Math.random()<.5){lines.push(`${order[1]} calls`);pot+=b}}
     const q=`What's in the pot right now${flop?'':' going to the flop'}?`;
-    return{q,lines,opts:optsNum(pot,[pot-dead,pot+last,pot-last,pot-.25,pot+.25,pre],money,.25),ans:money(pot),
-      expl:`Contributions: ${Object.entries(c).map(([p,v])=>`${p} ${money(v)}`).join(' · ')}${flop?' + flop bets':''}. ${dead?`Don't forget ${money(dead)} of dead blind money.`:''}`}}
+    return{q,lines,opts:optsNum(pot,[pot-dead,pot-ante,pot-dead-ante,pot+last,pot-last,pot-.25,pot+.25,pre],money,.25),ans:money(pot),
+      expl:`Contributions: ${Object.entries(c).map(([p,v])=>`${p} ${money(v)}`).join(' · ')}${flop?' + flop bets':''}. ${ante?`Plus ${money(ante)} in antes (${POS.length} × ${money(CFG.ante)}). `:''}${dead?`Don't forget ${money(dead)} of dead blind money.`:''}`}}
   if(type==='odds'||type==='mdf'){
     const P=r05(2+Math.random()*48),f=pick([.25,.33,.5,.66,.75,1,1.25,1.5]),B=r05(P*f);
-    if(type==='odds'){const need=B/(P+2*B);
-      return{q:`Pot is ${money(P)}. Villain bets ${money(B)}. What equity do you need to call?`,lines:[],
-        opts:optsNum(Math.round(need*100),[Math.round(B/(P+B)*100),Math.round(B/P*100),Math.round((1-P/(P+B))*100)+5,Math.round(need*100)+6],v=>v+'%',4),ans:Math.round(need*100)+'%',
-        expl:`Need = bet ÷ (pot + 2 × bet) = ${money(B)} ÷ ${money(P+2*B)} = ${pct1(need)}. Memorise: ⅓ pot → 20%, ½ → 25%, ⅔ → 28.6%, ¾ → 30%, pot → 33%.`}}
+    if(type==='odds'){const raked=CFG.rakePct>0&&Math.random()<.5,fp=P+2*B,rk=raked?rakeOf(fp):0,need=B/(fp-rk);
+      return{q:`Pot is ${money(P)}. Villain bets ${money(B)}.${raked?` Rake is ${CFG.rakePct}%${CFG.rakeCap>0?` (cap ${money(CFG.rakeCap)})`:''}.`:''} What equity do you need to call?`,lines:[],
+        opts:optsNum(Math.round(need*100),[Math.round(B/fp*100),Math.round(B/(P+B)*100),Math.round(B/P*100),Math.round((1-P/(P+B))*100)+5,Math.round(need*100)+6],v=>v+'%',4),ans:Math.round(need*100)+'%',
+        expl:(raked?`Final pot ${money(fp)} − ${money(rk)} rake = ${money(fp-rk)} you actually win. Need = ${money(B)} ÷ ${money(fp-rk)} = ${pct1(need)} (${pct1(B/fp)} without rake). `:`Need = bet ÷ (pot + 2 × bet) = ${money(B)} ÷ ${money(fp)} = ${pct1(need)}. `)+`Memorise: ⅓ pot → 20%, ½ → 25%, ⅔ → 28.6%, ¾ → 30%, pot → 33%.`}}
     const mdf=P/(P+B);
     return{q:`Pot is ${money(P)}. Villain bets ${money(B)}. What's your minimum defence frequency?`,lines:[],
       opts:optsNum(Math.round(mdf*100),[Math.round((1-B/(P+2*B))*100),Math.round((P-B)/P*100),Math.round(B/(P+B)*100),Math.round(mdf*100)-7],v=>v+'%',4),ans:Math.round(mdf*100)+'%',
@@ -883,10 +919,10 @@ function genMath(type){
       opts:optsNum(n,[n+1,n-1,n+2,n-2,n+3,n-3,n+4],v=>String(v),1),ans:String(n),
       expl:`${n} outs: ${outsTxt}. Next-card odds ${n}/${left} = ${pct(n/left)}. ${turn?`Rule of 2: ≈${2*n}%.`:`Rule of 4 (flop to river, all-in): ≈${Math.min(100,4*n)}%. Rule of 2 for one card: ≈${2*n}%.`}`};
     const eq=n/44;let tgt=Math.min(.45,Math.max(.08,eq+(Math.random()-.5)*.22));let P=r05(4+Math.random()*36),B=Math.max(.25,r05(tgt*P/(1-2*tgt)));
-    let need=B/(P+2*B);if(Math.abs(eq-need)<.015){B=r05(B*1.25);need=B/(P+2*B)}
+    let need=needEq(B,P+2*B);if(Math.abs(eq-need)<.015){B=r05(B*1.25);need=needEq(B,P+2*B)}
     const ans=eq>=need?'Call':'Fold';
     return{cards:s,q:`Turn. Pot ${money(P)}, villain bets ${money(B)}. Villain's hand is face up. Call or fold on direct odds?`,lines:[],opts:['Call','Fold'],ans,
-      expl:`${n} outs: ${outsTxt}. Equity ${n}/44 = ${pct1(eq)} (rule of 2 ≈ ${2*n}%). Need ${money(B)} ÷ ${money(P+2*B)} = ${pct1(need)}. ${Math.abs(eq-need)<.06?'Close spot: implied odds vs a stack-off-happy villain can turn a small shortfall into a call.':''}`}}}
+      expl:`${n} outs: ${outsTxt}. Equity ${n}/44 = ${pct1(eq)} (rule of 2 ≈ ${2*n}%). Need ${money(B)} ÷ ${money(P+2*B-rakeOf(P+2*B))}${rakeOf(P+2*B)?` (pot after ${money(rakeOf(P+2*B))} rake)`:''} = ${pct1(need)}. ${Math.abs(eq-need)<.06?'Close spot: implied odds vs a stack-off-happy villain can turn a small shortfall into a call.':''}`}}}
 function countOuts(h,v,board){const dead=new Set(h.concat(v,board)),o=[];for(let c=51;c>=0;c--){if(dead.has(c))continue;const b=board.concat(c);if(evalCards(h.concat(b))>evalCards(v.concat(b)))o.push(c)}return o}
 function genOutsSpot(street){
   for(let t=0;t<6000;t++){const d=shuffle([...Array(52).keys()]),h=[d[0],d[1]],v=[d[2],d[3]],board=d.slice(4,street==='flop'?7:8);
@@ -957,10 +993,10 @@ function ppGen(){
         line:`${sc.heroIP?'Villain checks to you.':'You act first.'} Tag each hand: bet ${money(size)} (⅓ pot) for value, bet as a bluff, or check.`}}
     if(pp.mode==='face'){
       const f=pick([.33,.5,.75,1]),B=r05(sc.pot*f),betR=f>=.75?villR.filter(x=>x.k!=='weak'):villR;
-      const need=B/(sc.pot+2*B),mdf=sc.pot/(sc.pot+B);
+      const need=needEq(B,sc.pot+2*B),mdf=sc.pot/(sc.pot+B);
       const hands=pickHands(heroR,5);hands.forEach(x=>{x.eq=mcEquity(x.cards,board,betR,it);x.d=decideFace(x,need)});
       return{mode:'face',sc,board,heroR,villR,betR,hands,tags:[],opts:['Raise','Call','Fold'],B,f,need,mdf,
-        line:`${sc.heroIP?'':'You check. '}<strong>${sc.V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot${f>=.75?', polarised: model removes weak pairs from their range':', range bet'}). Price: ${pct(need)} · MDF ${pct(mdf)}.`}}
+        line:`${sc.heroIP?'':'You check. '}<strong>${sc.V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot${f>=.75?', polarised: model removes weak pairs from their range':', range bet'}). Price: ${pct(need)}${rakeOf(sc.pot+2*B)?' after rake':''} · MDF ${pct(mdf)}.`}}
     // block
     const callR=villR.filter(vContinues),foldR=villR.filter(x=>!vContinues(x));if(callR.length<5||foldR.length<5)continue;
     const air=heroR.filter(x=>x.k==='air'||(x.k==='wdraw'&&!x.f.gut)),byC={};air.forEach(x=>(byC[x.cls]??=[]).push(x));
@@ -1035,7 +1071,8 @@ function renderCharts(){
   <label for="chart-txt" class="tag">Range notation</label>
   <textarea id="chart-txt" spellcheck="false">${customRanges[chartKey]??DEF_RANGES[chartKey]}</textarea>
   <div class="row"><button class="btn2" data-chart="save">Save range</button><button class="btn2" data-chart="reset" ${custom?'':'disabled'}>Restore default</button><span class="note" id="chart-msg"></span></div>
-  <p class="note">Notation: 22+, A2s+, KTo+, A5s-A2s, 76s, AK (both suits). BB defend and SB/IP flat charts include hands that also appear in the 3-bet chart; drills subtract the 3-bets.</p>`}
+  ${anteSteps()||rakeSteps()?`<p class="note"><strong>Your game settings adjust these in drills:</strong> ${anteSteps()?`opens and BB defence widen ${anteSteps()} step${anteSteps()>1?"s":""} for the ante`:""}${anteSteps()&&rakeSteps()?"; ":""}${rakeSteps()?"cold-calls and BB defence tighten 1 step for rake":""}.</p>`:""}
+  <p class="note">9-max: UTG, UTG+1 and UTG+2 have their own charts; LJ uses the 6-max UTG chart. Notation: 22+, A2s+, KTo+, A5s-A2s, 76s, AK (both suits). BB defend and SB/IP flat charts include hands that also appear in the 3-bet chart; drills subtract the 3-bets.</p>`}
 
 // ================= stats =================
 let resetArm=false;
@@ -1057,7 +1094,8 @@ function renderStats(){
   <div class="row"><button class="btn2 danger" data-reset="1">${resetArm?'Tap again to erase all stats':'Reset stats'}</button></div>`}
 function drill(key){
   const s=STATS[key];if(!s||!s.drill)return;const d=s.drill;
-  if(d.tab==='preflop'){pf.sub=d.sub;pf.pos[d.sub]=new Set([d.pos]);const m=key.match(/vs (\w+)$/);if(d.sub==='3bet'&&m)pf.vill=new Set([m[1]])}
+  if(d.tab==='preflop'){if((d.table||6)!==CFG.table){CFG.table=d.table||6;setTable();save('ll_cfg',CFG);Cloud.saveUser();hud()}
+    if(pf.table!==CFG.table)pfResetSeats();pf.sub=d.sub;pf.pos[d.sub]=new Set([d.pos]);const m=key.replace(' (9-max)','').match(/vs (\w+)$/);if(d.sub==='3bet'&&m)pf.vill=new Set([m[1]])}
   if(d.tab==='math')mt.types=new Set([d.type]);
   if(d.tab==='postflop')pp.mode=d.mode;
   if(d.tab==='reading'){rr.mode=d.mode||'read';if(d.target)rr.target=d.target}
@@ -1074,21 +1112,28 @@ function openSettings(){
       <input type="password" id="auth-pw" placeholder="Password (6+ characters)" autocomplete="current-password">
       <div class="row"><button class="btn2" data-auth="in">Sign in</button><button class="btn2" data-auth="new">Create account</button><button class="btn2" data-auth="reset">Forgot password</button></div>`;
   o.innerHTML=`<div class="sheet" role="dialog" aria-label="Settings"><h2 class="vt" style="font-size:24px">Settings</h2>
-    <h3>Sync</h3>${sync}<p class="note" id="auth-msg" role="status"></p><h3>Drills</h3>
+    <h3>Sync</h3>${sync}<p class="note" id="auth-msg" role="status"></p>
+    <h3>Game</h3>
+    <label class="f"><span>Table size</span><select id="s-table"><option value="6" ${CFG.table===9?'':'selected'}>6-max</option><option value="9" ${CFG.table===9?'selected':''}>9-max</option></select></label>
+    ${num('s-ante','Ante per player ($)','0 = no ante. Added to every pot; widens opens and BB defence one step',CFG.ante,.01,0,.5)}
+    ${num('s-rake','Rake (%)','0 = no rake. Applied to pots that see a flop; 4%+ tightens flats and BB defence one step',CFG.rakePct,.5,0,10)}
+    ${num('s-cap','Rake cap ($)','0 = no cap',CFG.rakeCap,.25,0,20)}
+    ${num('s-open','Your open size ($)','UTG–BTN. Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}${num('s-sbopen','Your SB open size ($)','',CFG.sbOpen,.25,.75,3)}
+    ${num('s-tbmin','Villain 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Villain 3-bet max ($)','Also the 3-bet size used in 3-bet pots',CFG.tbMax,.25,1,8)}
+    <h3>Drills</h3>
     <label class="f"><span>Timer<small>Answer before the bar runs out</small></span><input type="checkbox" id="s-timer" ${CFG.timerOn?'checked':''}></label>
     ${num('s-pf','Preflop seconds','',CFG.pfSec,1,2,60)}${num('s-rr','Range question seconds','Range builder gets 3×',CFG.rrSec,1,5,120)}
     ${num('s-mt','Math seconds','',CFG.mathSec,1,3,90)}${num('s-pp','Postflop seconds per spot','',CFG.postSec,1,10,180)}
-    ${num('s-open','Your open size ($)','UTG–BTN. Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}${num('s-sbopen','Your SB open size ($)','',CFG.sbOpen,.25,.75,3)}
-    ${num('s-tbmin','Villain 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Villain 3-bet max ($)','Also the 3-bet size used in 3-bet pots',CFG.tbMax,.25,1,8)}
     <label class="f"><span>Auto-advance when correct<small>Preflop and math drills</small></span><input type="checkbox" id="s-auto" ${CFG.autoNext?'checked':''}></label>
     ${num('s-it','Equity samples per hand','Higher is slower and more precise',CFG.iters,100,200,3000)}
     <div class="row"><button class="next" style="flex:1" data-set="save">Save</button><button class="btn2" data-set="close">Cancel</button></div></div>`}
 function saveSettings(){
   const v=id=>parseFloat($(id).value);
   const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
-  CFG={timerOn:$('#s-timer').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
+  const t0=CFG.table;
+  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
     openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:2,tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
-  if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;save('ll_cfg',CFG);Cloud.saveUser();closeSettings();show(cur)}
+  if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;setTable();if(CFG.table!==t0)rr.target='random';save('ll_cfg',CFG);hud();Cloud.saveUser();closeSettings();show(cur)}
 function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
 
 // ================= navigation & events =================
