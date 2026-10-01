@@ -177,7 +177,7 @@ h4.sh{margin:0;font:800 14px var(--f-display);font-stretch:85%;text-transform:up
 .hrow .hc{display:flex;gap:4px}
 .hrow .tags{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .tg{appearance:none;border:1px solid var(--line);border-radius:9px;background:var(--bg);min-height:42px;font:800 13.5px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}
-.tg.on.t-Value,.tg.on.t-Raise{background:var(--raise);border-color:var(--raise);color:var(--on-color)}
+.tg.on.t-Value,.tg.on.t-Raise,.tg.on.t-Bet,.tg.on.t-All-in{background:var(--raise);border-color:var(--raise);color:var(--on-color)}
 .tg.on.t-Bluff{background:var(--four);border-color:var(--four);color:var(--on-color)}
 .tg.on.t-Call{background:var(--call);border-color:var(--call);color:var(--on-color)}
 .tg.on.t-Check,.tg.on.t-Fold{background:var(--ink);border-color:var(--ink);color:var(--bg)}
@@ -218,6 +218,14 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 .blk .act.picked{box-shadow:inset 0 0 0 3px var(--ink)}
 .blk .act.right{box-shadow:inset 0 0 0 3px var(--good)}
 .busy{font:500 12px var(--f-mono);color:var(--muted)}
+.progwrap{position:relative}
+.prog{width:100%;height:auto;display:block}
+.pg-grid{stroke:var(--line);stroke-width:1}
+.pg-ax{fill:var(--muted);font:500 10px var(--f-mono)}
+.pg-bar{fill:var(--accent)}
+.pg-hit{fill:transparent;cursor:pointer}
+.pg-hit:hover{fill:var(--sunk);fill-opacity:.5}
+.pg-tip{position:absolute;top:0;background:var(--ink);color:var(--bg);font:500 12px var(--f-mono);padding:5px 8px;border-radius:7px;pointer-events:none;white-space:nowrap;transform:translateX(-50%)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -268,11 +276,19 @@ const $=s=>document.querySelector(s);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
-const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:2,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:3,sizing:'std',focus:true,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
 // v2: default open became $1.25 ($1.50 from the SB); older saved settings are upgraded once.
-function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5;c.v=2}return c}
+function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5}if((c.v||1)<3)c.sizing='std';c.v=3;return c}
 let CFG=migrateCfg(load('ll_cfg',{}));
 const openFor=p=>p==='SB'?CFG.sbOpen:CFG.openSize;
+// Standard sizes (solver conventions at 100bb): 3-bet 3x in position, 4x out of position; 4-bet ~2.2x in position, ~2.5x out of position.
+const r25=x=>Math.round(x*4)/4;
+const tbStd=(opener,tb)=>r25(openFor(opener)*(PO[tb]>PO[opener]?3:4));
+const fbStd=(T,ip)=>r25(T*(ip?2.2:2.5));
+function threeBetSize(opener,tb){
+  if(CFG.sizing!=='custom')return tbStd(opener,tb);
+  const open=openFor(opener),minC=Math.max(Math.round(CFG.tbMin*100),Math.round((2*open-.5)*100)),maxC=Math.max(minC,Math.round(CFG.tbMax*100)),s=[];
+  for(let c=minC;c<=maxC;c+=25)s.push(c/100);return pick(s)}
 function setTable(){POS=TABLES[CFG.table===9?9:6];PO={SB:0,BB:1};POS.slice(0,-2).forEach((p,i)=>PO[p]=i+2)}
 setTable();
 const is9=()=>CFG.table===9;
@@ -490,14 +506,16 @@ const Timer={raf:0,t0:0,cb:null,
   stop(){if(this.raf)cancelAnimationFrame(this.raf);this.raf=0;this.cb=null;return performance.now()-this.t0}};
 
 // ================= stats =================
-let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]);
+let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]),DAYS=load('ll_days',{});
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const sess={n:0,ok:0,streak:0,best:0};
 function record(key,ok,ms,drill,miss){
   const s=STATS[key]||(STATS[key]={n:0,ok:0,ms:0,drill});s.n++;if(ok)s.ok++;s.ms+=Math.min(ms||0,120000);s.drill=drill;s.last=Date.now();
   const t=Date.now(),m=(!ok&&miss)?{t,k:key,m:miss}:null;
   if(m){MISSES.unshift(m);MISSES=MISSES.slice(0,40)}
   sess.n++;if(ok){sess.ok++;sess.streak++;sess.best=Math.max(sess.best,sess.streak)}else sess.streak=0;
-  save('ll_stats',STATS);save('ll_misses',MISSES);hud();
+  const day=today(),dd=DAYS[day]||(DAYS[day]={n:0,ok:0});dd.n++;if(ok)dd.ok++;
+  save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_days',DAYS);hud();
   Cloud.log(key,ok,Math.round(Math.min(ms||0,120000)),drill,m)}
 function hud(){const bs=$('#brand-sub');if(bs)bs.textContent=`NL50 · $0.25/$0.50 · ${CFG.table}-max${CFG.ante?` · ante ${money(CFG.ante)}`:''}${CFG.rakePct?` · ${CFG.rakePct}% rake`:' · no rake'}`;$('#sess').innerHTML=`<b>${sess.ok}/${sess.n}</b> ${sess.n?pct(sess.ok/sess.n):''}<br>streak <b>${sess.streak}</b> · best ${sess.best}<span class="sync ${Cloud.cls()}" id="sync-badge">${Cloud.label()}</span>`}
 
@@ -505,6 +523,7 @@ function hud(){const bs=$('#brand-sub');if(bs)bs.textContent=`NL50 · $0.25/$0.5
 // Answers made while signed out (or before this version) wait in PENDING and are pushed as increments on sign-in.
 let PENDING=load('ll_pending',null);
 if(!PENDING){PENDING={stats:JSON.parse(JSON.stringify(STATS)),misses:MISSES.slice()};save('ll_pending',PENDING)}
+PENDING.days=PENDING.days||{};
 const clean=o=>o==null?null:JSON.parse(JSON.stringify(o));
 const statId=k=>encodeURIComponent(k).replace(/\./g,'%2E');
 const Cloud={on:false,user:null,db:null,state:'off',err:'',
@@ -526,35 +545,39 @@ const Cloud={on:false,user:null,db:null,state:'off',err:'',
       const r=this.ref();
       r.collection('stats').doc(statId(key)).set({k:key,n:this.inc(1),ok:this.inc(ok?1:0),ms:this.inc(ms),drill:clean(drill),last:Date.now()},{merge:true}).catch(e=>this.fail(e));
       if(miss)r.collection('misses').add(miss).catch(e=>this.fail(e));
+      r.collection('days').doc(today()).set({n:this.inc(1),ok:this.inc(ok?1:0)},{merge:true}).catch(e=>this.fail(e));
     }else{
       const s=PENDING.stats[key]||(PENDING.stats[key]={n:0,ok:0,ms:0});s.n++;if(ok)s.ok++;s.ms+=ms;s.drill=clean(drill);s.last=Date.now();
-      if(miss)PENDING.misses.unshift(miss);PENDING.misses=PENDING.misses.slice(0,40);save('ll_pending',PENDING)}},
+      if(miss)PENDING.misses.unshift(miss);PENDING.misses=PENDING.misses.slice(0,40);
+      const dd=PENDING.days[today()]||(PENDING.days[today()]={n:0,ok:0});dd.n++;if(ok)dd.ok++;save('ll_pending',PENDING)}},
   fail(e){this.state='error';this.err=e.message||String(e);hud()},
   async flush(){
-    const keys=Object.keys(PENDING.stats),ms=PENDING.misses;if(!keys.length&&!ms.length)return;
+    const keys=Object.keys(PENDING.stats),ms=PENDING.misses,days=Object.entries(PENDING.days||{});if(!keys.length&&!ms.length&&!days.length)return;
     const r=this.ref(),ops=[];
     keys.forEach(k=>{const s=PENDING.stats[k];ops.push(b=>b.set(r.collection('stats').doc(statId(k)),{k,n:this.inc(s.n),ok:this.inc(s.ok),ms:this.inc(Math.round(s.ms||0)),drill:clean(s.drill),last:s.last||Date.now()},{merge:true}))});
     ms.forEach(m=>ops.push(b=>b.set(r.collection('misses').doc(),clean(m))));
+    days.forEach(([d,v])=>ops.push(b=>b.set(r.collection('days').doc(d),{n:this.inc(v.n),ok:this.inc(v.ok)},{merge:true})));
     for(let i=0;i<ops.length;i+=400){const b=this.db.batch();ops.slice(i,i+400).forEach(f=>f(b));await b.commit()}
-    PENDING={stats:{},misses:[]};save('ll_pending',PENDING)},
+    PENDING={stats:{},misses:[],days:{}};save('ll_pending',PENDING)},
   async pull(quiet){
     if(!quiet){this.state='syncing';hud()}
     try{
       await this.flush();
       const r=this.ref();
-      const[st,ms,ud]=await Promise.all([r.collection('stats').get(),r.collection('misses').orderBy('t','desc').limit(40).get(),r.get()]);
+      const[st,ms,ud,dy]=await Promise.all([r.collection('stats').get(),r.collection('misses').orderBy('t','desc').limit(40).get(),r.get(),r.collection('days').get()]);
+      DAYS={};dy.forEach(d=>{const v=d.data();DAYS[d.id]={n:v.n||0,ok:v.ok||0}});save('ll_days',DAYS);
       STATS={};st.forEach(d=>{const v=d.data();if(v.k)STATS[v.k]={n:v.n||0,ok:v.ok||0,ms:v.ms||0,drill:v.drill,last:v.last}});
       MISSES=[];ms.forEach(d=>MISSES.push(d.data()));
       const u=ud.data();
-      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);setTable();if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;save('ll_cfg',CFG);save('ll_ranges',customRanges)}
+      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);setTable();if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;if(u.missed){MISSED=u.missed;save('ll_missed',MISSED)}save('ll_cfg',CFG);save('ll_ranges',customRanges)}
       else await this.saveUser();
       save('ll_stats',STATS);save('ll_misses',MISSES);this.state='synced';this.err='';
     }catch(e){this.state='error';this.err=e.message||String(e)}
     hud();if(cur==='stats'||cur==='charts'||(cur==='preflop'&&pf.table!==CFG.table))RENDER[cur]()},
-  saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges}).catch(e=>this.fail(e))},
+  saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges,missed:MISSED}).catch(e=>this.fail(e))},
   async resetStats(){
     if(!this.user)return;const r=this.ref();
-    for(const col of['stats','misses']){const snap=await r.collection(col).get();const docs=snap.docs;
+    for(const col of['stats','misses','days']){const snap=await r.collection(col).get();const docs=snap.docs;
       for(let i=0;i<docs.length;i+=400){const b=this.db.batch();docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit()}}}};
 async function authAct(kind){
   const msg=$('#auth-msg'),em=($('#auth-email')||{}).value,pw=($('#auth-pw')||{}).value;
@@ -571,10 +594,10 @@ async function authAct(kind){
 
 // ================= preflop =================
 const COLOR={Raise:'raise','4-Bet':'four','3-Bet':'four',Call:'call',Limp:'limp',Complete:'limp',Fold:'',Check:''};
-const PF_SUBS=[['rfi','RFI'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller']];
-const pfHeroes=sub=>({rfi:POS.slice(0,-1),'3bet':POS.slice(0,-1),limp:POS.slice(1),squeeze:POS.slice(2)})[sub];
+const PF_SUBS=[['rfi','RFI'],['open','Facing an open'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller']];
+const pfHeroes=sub=>({rfi:POS.slice(0,-1),open:POS.slice(1),'3bet':POS.slice(0,-1),limp:POS.slice(1),squeeze:POS.slice(2)})[sub];
 const pf={sub:'rfi',pos:{},vill:new Set(),q:null,last:null,table:null};
-function pfResetSeats(){['rfi','3bet','limp','squeeze'].forEach(k=>pf.pos[k]=new Set(pfHeroes(k)));pf.vill=new Set(POS.slice(1));pf.table=CFG.table}
+function pfResetSeats(){['rfi','open','3bet','limp','squeeze'].forEach(k=>pf.pos[k]=new Set(pfHeroes(k)));pf.vill=new Set(POS.slice(1));pf.opener=new Set(POS.slice(0,-1));pf.table=CFG.table}
 const after=h=>POS.slice(POS.indexOf(h)+1);
 const isIP=(a,b)=>PO[a]>PO[b];
 const EP=p=>['UTG','UTG1','UTG2','LJ','HJ'].includes(p);
@@ -591,7 +614,7 @@ const deadBlinds=(a,b)=>(a!=='SB'&&b!=='SB'?.25:0)+(a!=='BB'&&b!=='BB'?.5:0);
 function pfBuild(){
   const sub=pf.sub,heroes=[...pf.pos[sub]];if(!heroes.length)return null;
   for(let t=0;t<80;t++){
-    const H=pick(heroes);let open=openFor(H);const q={sub,H,seats:{},pot:blindsPot(),opts:[],pool:CLS,key:'',expl:[]};
+    const H=CFG.focus?focusSeat(sub,heroes):pick(heroes);let open=openFor(H);const q={sub,H,seats:{},pot:blindsPot(),opts:[],pool:CLS,key:'',expl:[]};
     POS.forEach(p=>q.seats[p]='');
     const foldBefore=p=>POS.slice(0,POS.indexOf(p)).forEach(x=>{if(!q.seats[x])q.seats[x]='Fold'});
     if(sub==='rfi'){
@@ -604,9 +627,7 @@ function pfBuild(){
       q.legend=[['raise','Open'],['','Fold']];
     }else if(sub==='3bet'){
       const vills=after(H).filter(v=>pf.vill.has(v));if(!vills.length)continue;const V=pick(vills);
-      const minC=Math.max(Math.round(CFG.tbMin*100),Math.round((2*open-.5)*100)),maxC=Math.max(minC,Math.round(CFG.tbMax*100)),sizes=[];
-      for(let c=minC;c<=maxC;c+=25)sizes.push(c/100);
-      const T=pick(sizes),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rfiSet(H);
+      const T=threeBetSize(H,V),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rfiSet(H);
       q.ansFn=c=>!rfi.has(c)?null:four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';
       q.pool=[...rfi];q.opts=['4-Bet','Call','Fold'];foldBefore(H);
       q.seats[H]='Open '+money(open);after(H).forEach(p=>q.seats[p]=p===V?'3-Bet '+money(T):(POS.indexOf(p)<POS.indexOf(V)?'Fold':''));
@@ -615,9 +636,23 @@ function pfBuild(){
       q.prompt=`You open <strong>${H}</strong> to ${money(open)}. <strong>${V}</strong> 3-bets to ${money(T)} (${ratio.toFixed(2).replace(/0$/,'')}x). You'll be ${ip?'in position':'out of position'}.`;
       q.key=`Preflop · vs 3-bet · ${H} vs ${V}`;q.tag='Facing a 3-bet';
       q.expl.push(`Price: call ${money(toCall)} to play a ${money(final)} pot, so you need ${pct(need)} equity before implied odds${rakeOf(final)?` (you win ${money(final-rakeOf(final))} after ${money(rakeOf(final))} rake)`:''}.`);
-      q.expl.push(ratio<=2?'Min-3-bet: continue with your whole opening range. Folding anything here is a leak.':ratio<=2.5?'Small 3-bet: add set-mining pairs, suited aces and suited connectors to your calls.':'Standard size: call only hands that play well in a 3-bet pot; keep 4-bets to value plus A5s from late position.');
+      q.expl.push(ratio<=2?'Min-3-bet: continue with your whole opening range. Folding anything here is a leak.':ratio<=2.5?'Small 3-bet: add set-mining pairs, suited aces and suited connectors to your calls.':`Standard size: call only hands that play well in a 3-bet pot; keep 4-bets to value plus A5s from late position. 4-bet to about ${money(fbStd(T,ip))} (${ip?'2.2x in position':'2.5x out of position'}).`);
       q.expl.push(`NL50 read: ${EP(V)||V==='HJ'?'early-position 3-bets are very strong':'blind 3-bets vs late opens are wider but still value-leaning'} at this stake. Against a nit, fold the bottom of the calling range.`);
       q.legend=[['four','4-Bet'],['call','Call'],['','Fold'],['na','Not in your open']];
+    }else if(sub==='open'){
+      const ops=POS.slice(0,POS.indexOf(H)).filter(p=>pf.opener.has(p));if(!ops.length)continue;const O=pick(ops);open=openFor(O);
+      const tb=rng('3bet_vs.'+rk3(O)),call=H==='BB'?villFlatSet(O,'BB'):H==='SB'?(O==='BTN'?villFlatSet('BTN','SB'):new Set()):villFlatSet(O,H);
+      q.ansFn=c=>tb.has(c)?'3-Bet':call.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
+      foldBefore(O);q.seats[O]='Open '+money(open);POS.slice(POS.indexOf(O)+1,POS.indexOf(H)).forEach(p=>q.seats[p]='Fold');
+      const posted=H==='SB'?.25:H==='BB'?.5:0,toCall=open-posted,T=tbStd(O,H),dead=deadBlinds(O,H)+anteTotal(),final=2*open+dead,need=needEq(toCall,final),ip=isIP(H,O);
+      q.pot=open+dead+posted;q.toCall=toCall;
+      q.prompt=`<strong>${O}</strong> opens to ${money(open)}. You're in the <strong>${H}</strong>${ip?'':', out of position'}. A 3-bet would be ${money(T)}.`;
+      q.key=`Preflop · vs open · ${H} vs ${O}`;q.tag='Facing an open';
+      q.expl.push(`Price: call ${money(toCall)} to play a ${money(final)} pot, so you need ${pct(need)} equity${rakeOf(final)?` after ${money(rakeOf(final))} rake`:''}.`);
+      if(H==='BB')q.expl.push(`BB closes the action with $0.50 already in, so it defends widest: ${pct((setCombos(call)+setCombos(tb))/1326)} of hands vs ${O}.${rakeSteps()?' Rake tightens this one step.':''}`);
+      else if(H==='SB')q.expl.push(O==='BTN'?'SB vs BTN: mostly 3-bet or fold. Flat only a few suited hands, because the BB can squeeze behind you.':'SB vs an earlier open: 3-bet or fold. Flatting out of position with the BB behind loses money.');
+      else q.expl.push(`Cold-calling ${O}: flat hands that play well in position, 3-bet the top plus a few suited-ace bluffs, fold offsuit junk. The blinds behind can still squeeze.`);
+      q.legend=[['four','3-Bet'],['call','Call'],['','Fold']];
     }else if(sub==='limp'){
       const hi=POS.indexOf(H);if(hi<1)continue;const before=POS.slice(0,hi);
       const n=1+rnd(Math.min(3,before.length));const L=shuffle(before).slice(0,n).sort((a,b)=>POS.indexOf(a)-POS.indexOf(b));
@@ -653,8 +688,20 @@ function pfBuild(){
     if(is9())q.key+=' (9-max)';
     return q}
   return null}
+// Focus mode: seats you get wrong are dealt more; hands you missed in a spot come back until you get them right.
+const PF_PREFIX={rfi:'Preflop · RFI · ',open:'Preflop · vs open · ','3bet':'Preflop · vs 3-bet · ',limp:'Preflop · Limpers · ',squeeze:'Preflop · Squeeze · '};
+let MISSED=load('ll_missed',{});
+function focusSeat(sub,heroes){
+  const w=heroes.map(H=>{let n=0,ok=0;const p=PF_PREFIX[sub]+H;
+    for(const k in STATS){if(!k.startsWith(p)||/[A-Z0-9]/.test(k[p.length]||'')||k.endsWith('(9-max)')!==is9())continue;n+=STATS[k].n;ok+=STATS[k].ok}
+    return n<3?1.5:.5+2*(1-ok/n)});
+  let r=Math.random()*w.reduce((a,b)=>a+b,0);for(let i=0;i<heroes.length;i++){r-=w[i];if(r<=0)return heroes[i]}return heroes[heroes.length-1]}
+function noteMiss(key,cls,ok){const a=MISSED[key]||[];const i=a.indexOf(cls);
+  if(ok){if(i<0)return;a.splice(i,1)}else{if(i>=0)return;a.push(cls);if(a.length>12)a.shift()}
+  if(a.length)MISSED[key]=a;else delete MISSED[key];save('ll_missed',MISSED);Cloud.saveUser()}
 function pfPickHand(q){
-  const inPool=new Set(q.pool);
+  const inPool=new Set(q.pool),again=(MISSED[q.key]||[]).filter(c=>inPool.has(c)&&c!==pf.last);
+  if(CFG.focus&&again.length&&Math.random()<.3){const cls=pick(again);pf.last=cls;q.retry=true;return{cls,cards:pick(classCombos(cls))}}
   const edges=q.pool.filter(c=>neighbors(c).some(n=>inPool.has(n)&&q.ansFn(n)!==q.ansFn(c)));
   let cls;
   for(let t=0;t<6;t++){
@@ -671,6 +718,7 @@ function renderPF(){
   <div class="toolbar">
     ${seg(PF_SUBS,pf.sub,'pfsub')}
     <div class="chips"><span class="lab">Your seat</span>${pfHeroes(pf.sub).map(p=>chip(p,pf.pos[pf.sub].has(p),'pfpos')).join('')}</div>
+    ${pf.sub==='open'?`<div class="chips"><span class="lab">Opener</span>${POS.slice(0,-1).map(p=>chip(p,pf.opener.has(p),'pfopener')).join('')}</div>`:''}
     ${pf.sub==='3bet'?`<div class="chips"><span class="lab">3-bettor</span>${POS.slice(1).map(p=>chip(p,pf.vill.has(p),'pfvill')).join('')}</div>`:''}
   </div>
   <div class="spot" id="pf-spot"></div>`;
@@ -680,7 +728,7 @@ function pfNext(){
   if(!q){Timer.stop();el.innerHTML='<p class="empty">No spot matches these filters. Turn on at least one seat (for 3-bets, a 3-bettor who acts after you).</p>';return}
   const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);pf.q=q;
   el.innerHTML=`${timerHTML()}
-    <div class="shead"><span class="tag">${q.tag}</span><span class="pot">Pot ${money(q.pot)}${q.toCall?` · to call ${money(q.toCall)}`:''}</span></div>
+    <div class="shead"><span class="tag">${q.tag}${q.retry?' <span class="pill b">Missed before</span>':''}</span><span class="pot">Pot ${money(q.pot)}${q.toCall?` · to call ${money(q.toCall)}`:''}</span></div>
     <div class="seats n${POS.length}" style="--n:${POS.length}">${POS.map(p=>{const a=q.seats[p];return `<div class="seat ${p===q.H?'me':''} ${a==='Fold'?'folded':a?'act':''}"><b>${p}</b><span>${p===q.H?(a?(POS.length>6?a.replace(/ \$[\d.]+$/,''):a):'You'):((POS.length>6&&a?a.replace(/ \$[\d.]+$/,''):a)||(POS.indexOf(p)>POS.indexOf(q.H)?'·':''))}</span></div>`}).join('')}</div>
     <div class="hand">${cardsHTML(q.cards)}</div>
     <p class="prompt">${q.prompt}</p>
@@ -688,7 +736,7 @@ function pfNext(){
     <div class="fb" id="pf-fb" hidden></div>`;
   Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>pfAnswer(null))}
 function pfAnswer(choice){
-  const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;
+  const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;noteMiss(q.key,q.cls,ok);
   record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H,table:CFG.table},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`);
   const acts=$('#pf-spot .acts');acts.classList.add('done');
   acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(b.dataset.pfans===q.ans)b.classList.add('right')});
@@ -712,7 +760,7 @@ function buildScen(type){
     else{H=C;V=O;heroSet=cs;villSet=os;desc=`<strong>${V}</strong> opens to ${money(open)}, you call in the <strong>${H}</strong>.`}
   }else if(type==='tbp_call'||type==='tbp_pfr'){
     const O=pick(POS.slice(0,-1)),B=pick(after(O));opener=O;open=openFor(O);
-    const T=Math.max(CFG.tbMax,2*open-.5),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+rk3(O));pot=2*T+deadBlinds(O,B)+anteTotal();
+    const T=CFG.sizing==='custom'?Math.max(CFG.tbMax,2*open-.5):tbStd(O,B),cs=call3bSet(O,B,T/open),ts=rng('3bet_vs.'+rk3(O));pot=2*T+deadBlinds(O,B)+anteTotal();
     if(type==='tbp_call'){H=O;V=B;heroSet=cs;villSet=ts;desc=`You open <strong>${H}</strong> to ${money(open)}, <strong>${V}</strong> 3-bets to ${money(T)}, you call.`}
     else{H=B;V=O;heroSet=ts;villSet=cs;desc=`<strong>${V}</strong> opens to ${money(open)}, you 3-bet to ${money(T)} from the <strong>${H}</strong>, ${V} calls.`}
   }else{
@@ -839,8 +887,8 @@ function getBuild(){const ops=POS.slice(0,-1),pre=POS[POS.indexOf('HJ')-1];retur
   ...ops.filter(p=>p!=='SB').map(p=>({d:`3-bet vs ${p} open`,set:()=>rng('3bet_vs.'+rk3(p))})),
   {d:`HJ flat vs ${pre} open`,set:()=>villFlatSet(pre,'HJ')},
   {d:'BTN flat vs CO open',set:()=>villFlatSet('CO','BTN')},
-  {d:'CO open, call BB 3-bet to $3',set:()=>call3bSet('CO','BB',3/openFor('CO'))},
-  {d:'UTG open, call BTN 3-bet to $3',set:()=>call3bSet('UTG','BTN',3/openFor('UTG'))},
+  {d:'CO open, call a BB 3-bet',set:()=>call3bSet('CO','BB',tbStd('CO','BB')/openFor('CO'))},
+  {d:'UTG open, call a BTN 3-bet',set:()=>call3bSet('UTG','BTN',tbStd('UTG','BTN')/openFor('UTG'))},
   {d:'Fish limp-call (model)',set:()=>rng('fish.limpcall')}]}
 let painting=false,paintVal=true;
 function rbNext(){
@@ -880,6 +928,7 @@ function optsNum(correct,cands,fmt,step){
   for(const c of shuffle(cands)){if(o.length>=4)break;if(!(c>0))continue;const f=fmt(c);if(!seen.has(f)){seen.add(f);o.push(c)}}
   let k=1;while(o.length<4&&k<40){for(const c of[correct+step*k,correct-step*k]){const f=fmt(c);if(c>0&&!seen.has(f)&&o.length<4){seen.add(f);o.push(c)}}k++}
   return shuffle(o).sort((a,b)=>a-b).map(v=>fmt(v))}
+function pickWeighted(a,wf){const w=a.map(wf);let r=Math.random()*w.reduce((x,y)=>x+y,0);for(let i=0;i<a.length;i++){r-=w[i];if(r<=0)return a[i]}return a[a.length-1]}
 function genMath(type){
   if(type==='pot'){
     const open=pick([1,1.25,1.5]),c={SB:.25,BB:.5},lines=[],ante=anteTotal();if(ante)lines.push(`everyone antes ${money(CFG.ante)}`);
@@ -935,7 +984,7 @@ function renderMath(){
   <div class="spot" id="mt-spot"></div>`;mtNext()}
 function mtNext(){
   const el=$('#mt-spot'),types=[...mt.types];if(!types.length){Timer.stop();el.innerHTML='<p class="empty">Pick at least one drill.</p>';return}
-  const type=pick(types),q=genMath(type);q.type=type;mt.q=q;
+  const type=CFG.focus?pickWeighted(types,t=>{const s=STATS['Math · '+MT.find(x=>x[0]===t)[1]];return !s||s.n<3?1.5:.5+2*(1-s.ok/s.n)}):pick(types),q=genMath(type);q.type=type;mt.q=q;
   el.innerHTML=`${timerHTML()}<div class="shead"><span class="tag">${MT.find(x=>x[0]===type)[1]}</span></div>
   ${q.lines.length?`<p class="prompt">${q.lines.join(', ')}.</p>`:''}
   ${q.cards?`<div class="boardwrap"><div><div class="lbl">You</div><div class="board">${cardsHTML(q.cards.hero,'sm')}</div></div><div><div class="lbl">Villain</div><div class="board">${cardsHTML(q.cards.vill,'sm')}</div></div><div><div class="lbl">Board</div><div class="board">${cardsHTML(q.cards.board,'sm')}</div></div></div>`:''}
@@ -977,7 +1026,56 @@ function decideFace(x,need){
   if(x.eq>=need)return{ans:'Call',ok:['Call','Fold'],why:`Marginal: ${pct(x.eq)} vs ${pct(need)} needed.`};
   if((x.f.gut||x.f.bdfd)&&x.eq>=need-.04)return{ans:'Call',ok:['Call','Fold'],why:`${pct(x.eq)} vs ${pct(need)}: short on direct odds, implied odds make it close.`};
   return{ans:'Fold',ok:['Fold'],why:`${pct(x.eq)} vs ${pct(need)} needed. Fold.`}}
+// ---- solver-backed spots: TexasSolver results packed by build-data.js (see README)
+let SOLVER=null;
+fetch('solver-data.json').then(r=>r.ok?r.json():null).then(d=>{SOLVER=d}).catch(()=>{});
+const SOLVER_POTS={srp:['BTN_BB','CO_BB','UTG_BB','SB_BB'],tbp:['BB3_BTN','BTN3_CO']};
+const cardOf=s=>R.indexOf(s[0])*4+'shdc'.indexOf(s[1]);
+function unpack(n){const w=4+n.a.length,m=[];for(let i=0;i+w<=n.s.length;i+=w)m.push({key:n.s.slice(i,i+4),q:[...n.s.slice(i+4,i+w)].map(Number)});return m}
+function actLabel(a,potChips){const[k,v]=a.split(' ');if(k==='CHECK')return'Check';if(k==='CALL')return'Call';if(k==='FOLD')return'Fold';
+  if(k==='RAISE'||(k==='ALLIN'&&pp.mode==='face'))return'Raise';if(k==='ALLIN')return'All-in';return`Bet ${Math.round(parseFloat(v)/potChips*100)}%`}
+function ppGenSolver(){
+  const keys=[...pp.pots].flatMap(p=>SOLVER_POTS[p]||[]),boards=Object.keys(SOLVER.boards).filter(b=>keys.includes(b.split('|')[0]));
+  if(!boards.length)return null;
+  const bk=pick(boards),[spot,flop]=bk.split('|'),sp=SOLVER.spots[spot],bd=SOLVER.boards[bk],board=flop.match(/../g).map(cardOf);
+  const usd=bb=>bb*.5,pot=usd(sp.potBB),tbp=sp.pot==='tbp';
+  const pfrPos=tbp?sp.threeBettor:sp.opener,callPos=tbp?sp.opener:sp.caller,ipPos=sp.pfr==='ip'?pfrPos:callPos;
+  const heroPFR=pp.mode==='bet',H=heroPFR?pfrPos:callPos,V=heroPFR?callPos:pfrPos;
+  const desc=tbp?(heroPFR?`<strong>${V}</strong> opens to ${money(usd(sp.open))}, you 3-bet to ${money(usd(sp.threeBet))} from the <strong>${H}</strong>, ${V} calls.`
+      :`You open <strong>${H}</strong> to ${money(usd(sp.open))}, <strong>${V}</strong> 3-bets to ${money(usd(sp.threeBet))}, you call.`)
+    :(heroPFR?`You open <strong>${H}</strong> to ${money(usd(sp.open))}, <strong>${V}</strong> calls.`:`<strong>${V}</strong> opens to ${money(usd(sp.open))}, you call in the <strong>${H}</strong>.`);
+  const sc={type:tbp?(heroPFR?'tbp_pfr':'tbp_call'):(heroPFR?'srp_pfr':'srp_call'),H,V,pot,desc,heroIP:H===ipPos};
+  const toCards=k=>[cardOf(k.slice(0,2)),cardOf(k.slice(2))];
+  const toRows=n=>{const labels=[...new Set(n.a.map(a=>actLabel(a,sp.potChips)))];
+    return{labels,rows:unpack(n).map(r=>{const cards=toCards(r.key),c=classify(cards,board),q={};
+      n.a.forEach((a,i)=>{const l=actLabel(a,sp.potChips);q[l]=Math.min(4,(q[l]||0)+r.q[i])});return{cards,cls:comboCls(cards[0],cards[1]),k:c.k,f:c.f,q}})}};
+  const decide=x=>{const ent=Object.entries(x.q).sort((a,b)=>b[1]-a[1]);let ok=ent.filter(e=>e[1]>=1).map(e=>e[0]);if(!ok.length)ok=[ent[0][0]];
+    return{ans:ent[0][0],ok,why:'Solver: '+ent.filter(e=>e[1]>0).map(e=>`${e[0]} (${e[1]*25}%)`).join(' · ')+'.'}};
+  const foot=`<p class="note">Solved with ${SOLVER.meta.solver}: 100bb, no rake, the app's default charts, $1.25/$1.50 opens. Frequencies are rounded to 25%; any play the solver uses 25%+ of the time counts as correct.</p>`;
+  if(pp.mode==='bet'){
+    const{labels,rows}=toRows(bd.cbet),hands=pickHands(rows,5);hands.forEach(x=>x.d=decide(x));
+    const vsKey=Object.keys(bd.vs)[0],villR=vsKey?unpack(bd.vs[vsKey]).map(r=>({cards:toCards(r.key)})):[];
+    hands.forEach(x=>{if(!villR.length||!x.d.ans.startsWith('Bet'))return;const eq=mcEquity(x.cards,board,villR,400);
+      x.d.why+=eq>=.5?` A value bet (${pct(eq)} vs their range).`:` A bluff or semi-bluff (${pct(eq)} vs their range).`});
+    const freq=labels.map(l=>[l,rows.reduce((s,r)=>s+(r.q[l]||0),0)/(4*rows.length)]);
+    const sizes=bd.cbet.a.filter(a=>a.startsWith('BET')).map(a=>`${actLabel(a,sp.potChips).slice(4)} (${money(usd(parseFloat(a.split(' ')[1])/10))})`).join(' or ');
+    return{mode:'bet',solver:true,sc,board,hands,tags:[],opts:labels,
+      line:`${sc.heroIP?'Villain checks to you.':'You act first.'} Tag each hand with the solver's main play: check, or bet ${sizes}.`,
+      summary:`<h4 class="sh">Solver's whole-range c-bet strategy</h4><div class="bars">${freq.map(([l,f])=>`<div class="bar"><span>${l}</span><span class="t"><i class="${l==='Check'?'air':'top'}" style="width:${Math.max(2,f*100)}%"></i></span><span class="n">${pct(f)}</span></div>`).join('')}</div>${foot}`}}
+  // Facing a c-bet: pick the size in proportion to how often the raiser uses it.
+  const cb=unpack(bd.cbet),bets=bd.cbet.a.map((a,i)=>[a,cb.reduce((s,r)=>s+r.q[i],0)]).filter(([a,w])=>a.startsWith('BET')&&w>0&&bd.vs[a]);
+  if(!bets.length)return null;
+  let roll=Math.random()*bets.reduce((s,x)=>s+x[1],0),act=bets[0][0];for(const[a,w]of bets){roll-=w;if(roll<=0){act=a;break}}
+  const chips=parseFloat(act.split(' ')[1]),B=usd(chips/10),f=chips/sp.potChips,{labels,rows}=toRows(bd.vs[act]);
+  const hands=pickHands(rows,5);hands.forEach(x=>x.d=decide(x));
+  const need=needEq(B,pot+2*B),mdf=pot/(pot+B),cont=rows.reduce((s,r)=>s+4-(r.q.Fold||0),0)/(4*rows.length);
+  return{mode:'face',solver:true,sc,board,hands,tags:[],opts:['Raise','Call','Fold'].filter(l=>labels.includes(l)),B,f,need,mdf,
+    line:`${sc.heroIP?'':'You check. '}<strong>${V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot). Price: ${pct(need)}${rakeOf(pot+2*B)?' after rake':''} · MDF ${pct(mdf)}.`,
+    summary:`<h4 class="sh">Solver's whole range vs this bet</h4><div class="meter"><i style="width:${cont*100}%"></i><b style="left:${mdf*100}%"></b></div>
+      <p class="note">The solver continues with <strong>${pct(cont)}</strong> of your ${rows.length} combos. MDF (black tick) is ${pct(mdf)}.</p>${foot}`}}
 function ppGen(){
+  // Solver spots cover 6-max single-raised and 3-bet pots; iso pots, 9-max and the blocker drill use the model.
+  if(SOLVER&&CFG.table===6&&pp.mode!=='block'&&(pp.pots.has('srp')||pp.pots.has('tbp'))&&!(pp.mode==='bet'&&pp.pots.has('iso')&&Math.random()<.34)){const s=ppGenSolver();if(s)return s}
   const map=pp.mode==='face'?{srp:'srp_call',tbp:'tbp_call'}:{srp:'srp_pfr',tbp:'tbp_pfr',iso:'iso'};
   let types=[...pp.pots].map(p=>map[p]).filter(Boolean);if(!types.length)types=[pp.mode==='face'?'srp_call':'srp_pfr'];
   const it=CFG.iters;
@@ -1008,19 +1106,19 @@ function ppGen(){
   return null}
 function renderPP(){
   $('#v-postflop').innerHTML=`<h2 class="vt">Postflop</h2>
-  <p class="vsub">Equities are simulated against the model ranges. Several answers can be accepted when a spot is close.</p>
+  <p class="vsub">Spots marked <span class="pill g">Solver</span> are graded against TexasSolver solutions; <span class="pill">Model</span> spots use simulated equity and rules of thumb. Several answers can be correct when a spot is mixed.</p>
   <div class="toolbar">${seg(PP_MODES,pp.mode,'ppmode')}
   <div class="chips"><span class="lab">Pot type</span>${[['srp','Single-raised'],['tbp','3-bet pot'],['iso','Iso pot']].filter(x=>!(pp.mode==='face'&&x[0]==='iso')).map(([k,l])=>chip(l,pp.pots.has(k),'pppot',k)).join('')}</div></div>
   <div class="spot" id="pp-spot"></div>`;ppNext()}
 function ppNext(){
   const el=$('#pp-spot');Timer.stop();el.innerHTML='<p class="busy">Running equities…</p>';
   setTimeout(()=>{const s=ppGen();pp.spot=s;if(!s){el.innerHTML='<p class="empty">Could not build a spot. Try again.</p>';return}
-    const head=`${timerHTML()}<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · ${s.sc.H} vs ${s.sc.V}</span><span class="pot">Pot ${money(s.sc.pot)}</span></div>
+    const head=`${timerHTML()}<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · ${s.sc.H} vs ${s.sc.V} <span class="pill ${s.solver?'g':''}">${s.solver?'Solver':'Model'}</span></span><span class="pot">Pot ${money(s.sc.pot)}</span></div>
       <p class="prompt">${s.sc.desc}</p><div class="boardwrap"><div><div class="lbl">Flop</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div><p class="prompt">${s.line}</p>`;
     if(s.mode==='block'){
       el.innerHTML=`${head}<div class="acts blk">${s.cands.map((x,i)=>`<button class="act" data-ppblock="${i}"><kbd>${i+1}</kbd>${cardsHTML(x.cards,'xs')}</button>`).join('')}</div><div class="fb" id="pp-fb" hidden></div>`;
       Timer.start(el.querySelector('.timer i'),Math.round(CFG.postSec/2),()=>ppBlock(null));return}
-    el.innerHTML=`${head}<div id="pp-rows">${s.hands.map((x,i)=>`<div class="hrow"><div class="hc">${cardsHTML(x.cards,'xs')}</div><div class="tags">${s.opts.map(o=>`<button class="tg t-${o}" data-pptag="${i}|${o}">${o}</button>`).join('')}</div><p class="hres" id="pp-r${i}" hidden></p></div>`).join('')}</div>
+    el.innerHTML=`${head}<div id="pp-rows">${s.hands.map((x,i)=>`<div class="hrow"><div class="hc">${cardsHTML(x.cards,'xs')}</div><div class="tags">${s.opts.map(o=>`<button class="tg t-${o.split(' ')[0]}" data-pptag="${i}|${o}">${o}</button>`).join('')}</div><p class="hres" id="pp-r${i}" hidden></p></div>`).join('')}</div>
       <button class="next" data-ppsubmit="1">Check answers</button><div class="fb" id="pp-fb" hidden></div>`;
     Timer.start(el.querySelector('.timer i'),CFG.postSec,()=>ppSubmit())},20)}
 function ppTag(i,o){const s=pp.spot;if(!s||s.done)return;s.tags[i]=o;
@@ -1030,16 +1128,16 @@ function ppSubmit(){
   const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop();let right=0;
   const ml=PP_MODES.find(m=>m[0]===s.mode)[1];
   s.hands.forEach((x,i)=>{const t=s.tags[i],ok=x.d.ok.includes(t);if(ok)right++;
-    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, model ${x.d.ans}`);
+    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, ${s.solver?'solver':'model'} ${x.d.ans}`);
     document.querySelectorAll(`[data-pptag^="${i}|"]`).forEach(b=>{const o=b.dataset.pptag.split('|')[1];b.disabled=true;if(o===t)b.classList.add(ok?'ok':'no');else if(x.d.ok.includes(o))b.classList.add('ok')});
     const r=$('#pp-r'+i);r.hidden=false;
     r.innerHTML=`<span class="${ok?'ok':'no'}">${ok?'✓':'✗'} ${x.d.ok.join(' / ')}</span> · <b>${CATL[x.k]}</b>${drawName(x.f)!=='no draw'&&!['draw','wdraw'].includes(x.k)?` + ${drawName(x.f)}`:''}. ${x.d.why}`});
   const fb=$('#pp-fb');fb.hidden=false;
   fb.innerHTML=`<div class="verdict ${right>=4?'good':'bad'}">${right}/${s.hands.length} right<small>${(ms/1000).toFixed(1)}s</small></div>
-    ${s.mode==='face'?`<div id="pp-mdf"><p class="busy">Checking your whole range against MDF…</p></div>`:ppVillSummary(s)}
+    ${s.summary?s.summary:s.mode==='face'?`<div id="pp-mdf"><p class="busy">Checking your whole range against MDF…</p></div>`:ppVillSummary(s)}
     <button class="next" data-next="pp">Next spot ↵</button>`;
   $('[data-ppsubmit]').hidden=true;
-  if(s.mode==='face')setTimeout(()=>{if(pp.spot!==s)return;let cont=0;
+  if(s.mode==='face'&&!s.solver)setTimeout(()=>{if(pp.spot!==s)return;let cont=0;
     s.heroR.forEach(x=>{const eq=mcEquity(x.cards,s.board,s.betR,90);if(decideFace({eq,f:x.f},s.need).ans!=='Fold')cont++});
     const cf=cont/s.heroR.length,el=$('#pp-mdf');if(!el)return;
     el.innerHTML=`<h4 class="sh">Your whole range vs this bet</h4>
@@ -1086,12 +1184,25 @@ function renderStats(){
   $('#v-stats').innerHTML=`<h2 class="vt">Leak finder</h2>
   <p class="vsub">Every answer is logged by spot. Spots with 3+ attempts are ranked by accuracy; your worst ones are your leaks. ${Cloud.user?'Synced across your signed-in devices.':'Saved on this device only until you sign in (Settings → Sync).'}</p>
   <div class="kv"><div>All-time<b>${tot?pct(okT/tot):'–'}</b>${tot} answers</div>${mods.map(m=>`<div>${m.m}<b>${m.acc==null?'–':pct(m.acc)}</b>${m.n} answers</div>`).join('')}</div>
+  ${progressHTML()}
   <h4 class="sh">Biggest leaks</h4>
   ${leaks.length?`<div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${leaks.map(row).join('')}</tbody></table></div>`:'<p class="empty">No spot has 3 attempts yet. Run a few drills and your weakest spots will show up here.</p>'}
   <h4 class="sh">Recent mistakes</h4>
   ${MISSES.length?`<ul class="misses">${MISSES.slice(0,20).map(m=>`<li>${m.m}</li>`).join('')}</ul>`:'<p class="empty">No mistakes logged yet.</p>'}
   ${E.length>leaks.length?`<h4 class="sh">All spots</h4><div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${E.sort((a,b)=>a.k.localeCompare(b.k)).map(row).join('')}</tbody></table></div>`:''}
   <div class="row"><button class="btn2 danger" data-reset="1">${resetArm?'Tap again to erase all stats':'Reset stats'}</button></div>`}
+function progressHTML(){
+  const days=[];for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;days.push([k,DAYS[k]])}
+  const active=days.filter(d=>d[1]&&d[1].n);if(!active.length)return '';
+  const W=600,H=150,L=34,B=22,T=8,bw=(W-L)/30,y=a=>T+(1-a)*(H-T-B);
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="prog" role="img" aria-label="Daily accuracy, last 30 days">`;
+  for(const g of[0,.25,.5,.75,1])s+=`<line x1="${L}" x2="${W}" y1="${y(g)}" y2="${y(g)}" class="pg-grid"/><text x="${L-6}" y="${y(g)+4}" class="pg-ax" text-anchor="end">${g*100}%</text>`;
+  days.forEach(([k,v],i)=>{const x=L+i*bw+2;if((i%7===0&&i<=24)||i===29)s+=`<text x="${x+bw/2-2}" y="${H-6}" class="pg-ax" text-anchor="middle">${i===29?'Today':k.slice(5).replace('-','/')}</text>`;
+    if(!v||!v.n)return;const a=v.ok/v.n,top=y(Math.max(a,.02)),bh=y(0)-top;
+    s+=`<path d="M${x},${y(0)} v${-(bh-3)} q0,-3 3,-3 h${bw-10} q3,0 3,3 v${bh-3} z" class="pg-bar"/><rect x="${x-2}" y="${T}" width="${bw}" height="${H-T-B}" class="pg-hit" data-tip="${k}: ${pct(a)} of ${v.n} answers"/>`});
+  const tot=active.reduce((a,d)=>a+d[1].n,0),okT=active.reduce((a,d)=>a+d[1].ok,0);
+  return `<h4 class="sh">Last 30 days</h4><div class="progwrap">${s}</svg><div class="pg-tip" hidden></div></div>
+  <p class="note">${active.length} active day${active.length>1?'s':''}, ${tot} answers, ${pct(okT/tot)} correct. Bar height is that day's accuracy; tap a bar for details.</p>`}
 function drill(key){
   const s=STATS[key];if(!s||!s.drill)return;const d=s.drill;
   if(d.tab==='preflop'){if((d.table||6)!==CFG.table){CFG.table=d.table||6;setTable();save('ll_cfg',CFG);Cloud.saveUser();hud()}
@@ -1119,11 +1230,13 @@ function openSettings(){
     ${num('s-rake','Rake (%)','0 = no rake. Applied to pots that see a flop; 4%+ tightens flats and BB defence one step',CFG.rakePct,.5,0,10)}
     ${num('s-cap','Rake cap ($)','0 = no cap',CFG.rakeCap,.25,0,20)}
     ${num('s-open','Your open size ($)','UTG–BTN. Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}${num('s-sbopen','Your SB open size ($)','',CFG.sbOpen,.25,.75,3)}
-    ${num('s-tbmin','Villain 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Villain 3-bet max ($)','Also the 3-bet size used in 3-bet pots',CFG.tbMax,.25,1,8)}
+    <label class="f"><span>Villain bet sizing<small>Standard: 3-bets 3x in position, 4x from the blinds, as solvers do. Custom: the range below.</small></span><select id="s-sizing"><option value="std" ${CFG.sizing==='custom'?'':'selected'}>Standard</option><option value="custom" ${CFG.sizing==='custom'?'selected':''}>Custom</option></select></label>
+    ${num('s-tbmin','Custom 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Custom 3-bet max ($)','',CFG.tbMax,.25,1,8)}
     <h3>Drills</h3>
     <label class="f"><span>Timer<small>Answer before the bar runs out</small></span><input type="checkbox" id="s-timer" ${CFG.timerOn?'checked':''}></label>
     ${num('s-pf','Preflop seconds','',CFG.pfSec,1,2,60)}${num('s-rr','Range question seconds','Range builder gets 3×',CFG.rrSec,1,5,120)}
     ${num('s-mt','Math seconds','',CFG.mathSec,1,3,90)}${num('s-pp','Postflop seconds per spot','',CFG.postSec,1,10,180)}
+    <label class="f"><span>Focus on my leaks<small>Deal weak seats and drills more often; replay hands you missed</small></span><input type="checkbox" id="s-focus" ${CFG.focus?'checked':''}></label>
     <label class="f"><span>Auto-advance when correct<small>Preflop and math drills</small></span><input type="checkbox" id="s-auto" ${CFG.autoNext?'checked':''}></label>
     ${num('s-it','Equity samples per hand','Higher is slower and more precise',CFG.iters,100,200,3000)}
     <div class="row"><button class="next" style="flex:1" data-set="save">Save</button><button class="btn2" data-set="close">Cancel</button></div></div>`}
@@ -1131,8 +1244,8 @@ function saveSettings(){
   const v=id=>parseFloat($(id).value);
   const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
   const t0=CFG.table;
-  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
-    openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:2,tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
+  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,focus:$('#s-focus').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
+    openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:3,sizing:$('#s-sizing').value==='custom'?'custom':'std',tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
   if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;setTable();if(CFG.table!==t0)rr.target='random';save('ll_cfg',CFG);hud();Cloud.saveUser();closeSettings();show(cur)}
 function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
 
@@ -1152,6 +1265,7 @@ document.addEventListener('click',e=>{
   if(d.pfsub){pf.sub=d.pfsub;return renderPF()}
   if(d.pfpos){toggleSet(pf.pos[pf.sub],d.pfpos);return renderPF()}
   if(d.pfvill){toggleSet(pf.vill,d.pfvill);return renderPF()}
+  if(d.pfopener){toggleSet(pf.opener,d.pfopener);return renderPF()}
   if(d.pfans)return pfAnswer(d.pfans);
   if(d.next){clearTimeout(pf.q&&pf.q.auto);clearTimeout(mt.q&&mt.q.auto);
     if(d.next==='pf')return pfNext();
@@ -1175,11 +1289,15 @@ document.addEventListener('click',e=>{
     delete customRanges[chartKey];save('ll_ranges',customRanges);Cloud.saveUser();return renderCharts()}
   if(d.drill)return drill(decodeURIComponent(d.drill));
   if(d.reset){if(!resetArm){resetArm=true;return renderStats()}
-    STATS={};MISSES=[];PENDING={stats:{},misses:[]};save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_pending',PENDING);resetArm=false;
+    STATS={};MISSES=[];DAYS={};MISSED={};PENDING={stats:{},misses:[],days:{}};save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_days',DAYS);save('ll_missed',MISSED);save('ll_pending',PENDING);Cloud.saveUser();resetArm=false;
     Cloud.resetStats().catch(e=>Cloud.fail(e));return renderStats()}
   if(d.auth){if(d.auth==='sync')return Cloud.pull();return authAct(d.auth)}
   if(t.id==='openSettings')return openSettings();
   if(d.set)return d.set==='save'?saveSettings():closeSettings()});
+function showTip(e){const t=e.target.closest&&e.target.closest('.pg-hit'),tip=document.querySelector('.pg-tip');if(!tip)return;
+  if(!t){tip.hidden=true;return}const w=tip.parentElement.getBoundingClientRect(),r=t.getBoundingClientRect();
+  tip.textContent=t.dataset.tip;tip.hidden=false;tip.style.left=Math.min(w.width-70,Math.max(70,r.left-w.left+r.width/2))+'px'}
+document.addEventListener('pointerover',showTip);document.addEventListener('pointerdown',showTip);
 document.addEventListener('change',e=>{
   if(e.target.id==='chart-sel'){chartKey=e.target.value;renderCharts()}
   if(e.target.id==='rr-target'){rr.target=e.target.value;rbNext()}});

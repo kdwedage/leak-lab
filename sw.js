@@ -2,8 +2,8 @@
 // App files (same origin): network-first, bypassing the browser's HTTP cache, so pushed updates show on the next launch;
 // falls back to the cached copy when offline or when the network takes longer than 3 seconds.
 // Firebase SDK and fonts: cache-first with background refresh. Firestore traffic is never touched here.
-const CACHE = 'leak-lab-v4';
-const SHELL = ['./', 'index.html', 'firebase-config.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
+const CACHE = 'leak-lab-v5';
+const SHELL = ['./', 'index.html', 'firebase-config.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png', 'solver-data.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE)
