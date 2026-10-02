@@ -223,6 +223,16 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 .pg-grid{stroke:var(--line);stroke-width:1}
 .pg-ax{fill:var(--muted);font:500 10px var(--f-mono)}
 .pg-bar{fill:var(--accent)}
+.radars{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.rd-card{border:1px solid var(--line);border-radius:12px;padding:10px 10px 4px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.rd-card:last-child:nth-child(odd){grid-column:1/-1}
+.radar{max-width:400px;margin:0 auto}
+.rd-ring{fill:none}
+.rd-area{fill:var(--accent);fill-opacity:.18;stroke:var(--accent);stroke-width:2;stroke-linejoin:round}
+.rd-dot{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.rd-lbl{fill:var(--ink);font-size:10.5px}
+.rd-val{fill:var(--muted)}
+.rd-worst{fill:var(--bad);font-weight:600}
 .pg-hit{fill:transparent;cursor:pointer}
 .pg-hit:hover{fill:var(--sunk);fill-opacity:.5}
 .pg-tip{position:absolute;top:0;background:var(--ink);color:var(--bg);font:500 12px var(--f-mono);padding:5px 8px;border-radius:7px;pointer-events:none;white-space:nowrap;transform:translateX(-50%)}
@@ -509,14 +519,24 @@ const Timer={raf:0,t0:0,cb:null,
 let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]),DAYS=load('ll_days',{});
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const sess={n:0,ok:0,streak:0,best:0};
-function record(key,ok,ms,drill,miss){
+function record(key,ok,ms,drill,miss,dims=[]){
   const s=STATS[key]||(STATS[key]={n:0,ok:0,ms:0,drill});s.n++;if(ok)s.ok++;s.ms+=Math.min(ms||0,120000);s.drill=drill;s.last=Date.now();
   const t=Date.now(),m=(!ok&&miss)?{t,k:key,m:miss}:null;
   if(m){MISSES.unshift(m);MISSES=MISSES.slice(0,40)}
   sess.n++;if(ok){sess.ok++;sess.streak++;sess.best=Math.max(sess.best,sess.streak)}else sess.streak=0;
   const day=today(),dd=DAYS[day]||(DAYS[day]={n:0,ok:0});dd.n++;if(ok)dd.ok++;
   save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_days',DAYS);hud();
-  Cloud.log(key,ok,Math.round(Math.min(ms||0,120000)),drill,m)}
+  const ms2=Math.round(Math.min(ms||0,120000));Cloud.log(key,ok,ms2,drill,m);
+  for(const d of dims){const k='@'+d,x=STATS[k]||(STATS[k]={n:0,ok:0,ms:0});x.n++;if(ok)x.ok++;x.ms+=ms2;Cloud.log(k,ok,ms2,null,null,true)}
+  if(dims.length)save('ll_stats',STATS)}
+// Board texture tags: suit pattern, plus paired / connected / A-high / broadway / low. A board can carry several.
+const TEXTURES=['Rainbow','Two-tone','Monotone','Paired','Connected','A-high','Broadway','Low'];
+function textures(board){const r=board.map(c=>c>>2).sort((a,b)=>b-a),u=[...new Set(r)],s=new Set(board.map(c=>c&3)).size,t=[s===1?'Monotone':s===2?'Two-tone':'Rainbow'];
+  if(u.length<3)t.push('Paired');
+  if(u.length===3&&(u[0]-u[2]<=4||(u[0]===12&&u[1]<=3)))t.push('Connected');
+  if(r[0]===12)t.push('A-high');if(r.filter(x=>x>=8).length>=2)t.push('Broadway');if(r[0]<=6)t.push('Low');
+  return t}
+const texDims=b=>textures(b).map(t=>'tex:'+t);
 function hud(){const bs=$('#brand-sub');if(bs)bs.textContent=`NL50 · $0.25/$0.50 · ${CFG.table}-max${CFG.ante?` · ante ${money(CFG.ante)}`:''}${CFG.rakePct?` · ${CFG.rakePct}% rake`:' · no rake'}`;$('#sess').innerHTML=`<b>${sess.ok}/${sess.n}</b> ${sess.n?pct(sess.ok/sess.n):''}<br>streak <b>${sess.streak}</b> · best ${sess.best}<span class="sync ${Cloud.cls()}" id="sync-badge">${Cloud.label()}</span>`}
 
 // ================= cloud sync (Firebase) =================
@@ -540,16 +560,16 @@ const Cloud={on:false,user:null,db:null,state:'off',err:'',
   cls(){return this.state==='synced'?'ok':this.state==='error'?'err':this.state==='off'?'':'warn'},
   ref(){return this.db.collection('users').doc(this.user.uid)},
   inc(n){return firebase.firestore.FieldValue.increment(n)},
-  log(key,ok,ms,drill,miss){
+  log(key,ok,ms,drill,miss,dim){
     if(this.user){
       const r=this.ref();
       r.collection('stats').doc(statId(key)).set({k:key,n:this.inc(1),ok:this.inc(ok?1:0),ms:this.inc(ms),drill:clean(drill),last:Date.now()},{merge:true}).catch(e=>this.fail(e));
       if(miss)r.collection('misses').add(miss).catch(e=>this.fail(e));
-      r.collection('days').doc(today()).set({n:this.inc(1),ok:this.inc(ok?1:0)},{merge:true}).catch(e=>this.fail(e));
+      if(!dim)r.collection('days').doc(today()).set({n:this.inc(1),ok:this.inc(ok?1:0)},{merge:true}).catch(e=>this.fail(e));
     }else{
       const s=PENDING.stats[key]||(PENDING.stats[key]={n:0,ok:0,ms:0});s.n++;if(ok)s.ok++;s.ms+=ms;s.drill=clean(drill);s.last=Date.now();
       if(miss)PENDING.misses.unshift(miss);PENDING.misses=PENDING.misses.slice(0,40);
-      const dd=PENDING.days[today()]||(PENDING.days[today()]={n:0,ok:0});dd.n++;if(ok)dd.ok++;save('ll_pending',PENDING)}},
+      if(!dim){const dd=PENDING.days[today()]||(PENDING.days[today()]={n:0,ok:0});dd.n++;if(ok)dd.ok++}save('ll_pending',PENDING)}},
   fail(e){this.state='error';this.err=e.message||String(e);hud()},
   async flush(){
     const keys=Object.keys(PENDING.stats),ms=PENDING.misses,days=Object.entries(PENDING.days||{});if(!keys.length&&!ms.length&&!days.length)return;
@@ -737,7 +757,7 @@ function pfNext(){
   Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>pfAnswer(null))}
 function pfAnswer(choice){
   const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;noteMiss(q.key,q.cls,ok);
-  record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H,table:CFG.table},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`);
+  record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H,table:CFG.table},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`,['seat:'+q.H]);
   const acts=$('#pf-spot .acts');acts.classList.add('done');
   acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(b.dataset.pfans===q.ans)b.classList.add('right')});
   const fb=$('#pf-fb');fb.hidden=false;
@@ -856,7 +876,7 @@ function rrShowQ(){
 function rrAnswer(choice){
   const s=rr.spot;if(!s||s.qDone)return;s.qDone=true;const q=s.qs[s.qi],ms=Timer.stop(),ok=q.ok.includes(choice);s.res[s.qi]=ok;
   const QN={eq:'Equity advantage',nut:'Nut advantage',bk:'Range composition',odd:'Unlikely hand',tp:'Top pair+ share'};
-  record(`Ranges · ${QN[q.id]}`,ok,ms,{tab:'reading'},`${QN[q.id]} (${s.sc.H} vs ${s.sc.V}, ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}): you ${choice||'timed out'}, answer ${q.ans}`);
+  record(`Ranges · ${QN[q.id]}`,ok,ms,{tab:'reading'},`${QN[q.id]} (${s.sc.H} vs ${s.sc.V}, ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}): you ${choice||'timed out'}, answer ${q.ans}`,['seat:'+s.sc.H,...texDims(s.board)]);
   const acts=$('#rr-spot .acts');acts.classList.add('done');
   acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.rrans===choice)b.classList.add('picked');if(q.ok.includes(b.dataset.rrans))b.classList.add('right')});
   $('#rr-spot .qdots').outerHTML=dots(s.qs.length,s.qi,s.res);
@@ -1128,7 +1148,7 @@ function ppSubmit(){
   const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop();let right=0;
   const ml=PP_MODES.find(m=>m[0]===s.mode)[1];
   s.hands.forEach((x,i)=>{const t=s.tags[i],ok=x.d.ok.includes(t);if(ok)right++;
-    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, ${s.solver?'solver':'model'} ${x.d.ans}`);
+    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, ${s.solver?'solver':'model'} ${x.d.ans}`,['seat:'+s.sc.H,...texDims(s.board)]);
     document.querySelectorAll(`[data-pptag^="${i}|"]`).forEach(b=>{const o=b.dataset.pptag.split('|')[1];b.disabled=true;if(o===t)b.classList.add(ok?'ok':'no');else if(x.d.ok.includes(o))b.classList.add('ok')});
     const r=$('#pp-r'+i);r.hidden=false;
     r.innerHTML=`<span class="${ok?'ok':'no'}">${ok?'✓':'✗'} ${x.d.ok.join(' / ')}</span> · <b>${CATL[x.k]}</b>${drawName(x.f)!=='no draw'&&!['draw','wdraw'].includes(x.k)?` + ${drawName(x.f)}`:''}. ${x.d.why}`});
@@ -1147,7 +1167,7 @@ function ppVillSummary(s){const callR=s.villR.filter(vContinues);
   return `<p class="note">Villain's calling range vs a small c-bet: ${callR.length} of ${s.villR.length} combos (${pct(callR.length/s.villR.length)}). Composition:</p>${catBars(callR)}`}
 function ppBlock(i){
   const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop(),pickd=i==null?null:s.cands[i],ok=pickd===s.best;
-  record('Postflop · Pick the bluff · Blockers',ok,ms,{tab:'postflop',mode:'block'},`Blockers on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: picked ${pickd?pickd.cls:'nothing'}, best ${s.best.cls}`);
+  record('Postflop · Pick the bluff · Blockers',ok,ms,{tab:'postflop',mode:'block'},`Blockers on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: picked ${pickd?pickd.cls:'nothing'}, best ${s.best.cls}`,['seat:'+s.sc.H,...texDims(s.board)]);
   const acts=$('#pp-spot .acts');acts.classList.add('done');
   acts.querySelectorAll('.act').forEach((b,k)=>{b.disabled=true;if(k===i)b.classList.add('picked');if(s.cands[k]===s.best)b.classList.add('right')});
   const blocked=x=>{const m={};s.callR.forEach(v=>{if(x.cards.includes(v.cards[0])||x.cards.includes(v.cards[1]))m[v.cls]=(m[v.cls]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([c,n])=>`${c}×${n}`).join(', ')||'nothing'};
@@ -1175,7 +1195,7 @@ function renderCharts(){
 // ================= stats =================
 let resetArm=false;
 function renderStats(){
-  const E=Object.entries(STATS).map(([k,v])=>({k,...v,acc:v.ok/v.n}));
+  const E=Object.entries(STATS).filter(([k])=>k[0]!=='@').map(([k,v])=>({k,...v,acc:v.ok/v.n}));
   const tot=E.reduce((a,e)=>a+e.n,0),okT=E.reduce((a,e)=>a+e.ok,0);
   const mods=['Preflop','Ranges','Math','Postflop'].map(m=>{const es=E.filter(e=>e.k.startsWith(m));const n=es.reduce((a,e)=>a+e.n,0),o=es.reduce((a,e)=>a+e.ok,0);return{m,n,acc:n?o/n:null}});
   const leaks=E.filter(e=>e.n>=3).sort((a,b)=>a.acc-b.acc||b.n-a.n).slice(0,12);
@@ -1185,12 +1205,42 @@ function renderStats(){
   <p class="vsub">Every answer is logged by spot. Spots with 3+ attempts are ranked by accuracy; your worst ones are your leaks. ${Cloud.user?'Synced across your signed-in devices.':'Saved on this device only until you sign in (Settings → Sync).'}</p>
   <div class="kv"><div>All-time<b>${tot?pct(okT/tot):'–'}</b>${tot} answers</div>${mods.map(m=>`<div>${m.m}<b>${m.acc==null?'–':pct(m.acc)}</b>${m.n} answers</div>`).join('')}</div>
   ${progressHTML()}
+  ${radarsHTML()}
   <h4 class="sh">Biggest leaks</h4>
   ${leaks.length?`<div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${leaks.map(row).join('')}</tbody></table></div>`:'<p class="empty">No spot has 3 attempts yet. Run a few drills and your weakest spots will show up here.</p>'}
   <h4 class="sh">Recent mistakes</h4>
   ${MISSES.length?`<ul class="misses">${MISSES.slice(0,20).map(m=>`<li>${m.m}</li>`).join('')}</ul>`:'<p class="empty">No mistakes logged yet.</p>'}
   ${E.length>leaks.length?`<h4 class="sh">All spots</h4><div class="tw"><table class="st"><thead><tr><th>Spot</th><th class="num">Acc</th><th class="num">N</th><th class="num">Avg</th><th></th></tr></thead><tbody>${E.sort((a,b)=>a.k.localeCompare(b.k)).map(row).join('')}</tbody></table></div>`:''}
   <div class="row"><button class="btn2 danger" data-reset="1">${resetArm?'Tap again to erase all stats':'Reset stats'}</button></div>`}
+// One radar per skill family. Each spoke is accuracy (centre 0%, rim 100%); spokes with fewer than 3 answers show no point.
+function radarHTML(title,axes){
+  const W=380,H=240,cx=190,cy=122,R=74,n=axes.length,ang=i=>-Math.PI/2+i*2*Math.PI/n,pt=(i,r)=>[cx+r*Math.cos(ang(i)),cy+r*Math.sin(ang(i))];
+  const has=axes.map(a=>a.n>=3),data=axes.filter((a,i)=>has[i]);
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="prog radar" role="img" aria-label="${title}: accuracy by ${axes.map(a=>a.l).join(', ')}">`;
+  for(const g of[.25,.5,.75,1])s+=`<polygon class="pg-grid rd-ring" points="${axes.map((a,i)=>pt(i,R*g).join(',')).join(' ')}"/>`;
+  axes.forEach((a,i)=>{const[x,y]=pt(i,R);s+=`<line class="pg-grid" x1="${cx}" y1="${cy}" x2="${x}" y2="${y}"/>`});
+  s+=`<text class="pg-ax" x="${cx+3}" y="${cy-R*.5+3}">50%</text>`;
+  const worst=data.length?data.reduce((a,b)=>a.ok/a.n<=b.ok/b.n?a:b):null;
+  if(data.length>=3)s+=`<polygon class="rd-area" points="${axes.map((a,i)=>has[i]?pt(i,R*a.ok/a.n).join(','):null).filter(Boolean).join(' ')}"/>`;
+  axes.forEach((a,i)=>{const[lx,ly]=pt(i,R+16),c=Math.cos(ang(i)),anchor=Math.abs(c)<.3?'middle':c>0?'start':'end',dy=Math.sin(ang(i))>.3?10:Math.sin(ang(i))<-.3?-4:3;
+    s+=`<text class="pg-ax rd-lbl${a===worst?' rd-worst':''}" x="${lx}" y="${ly+dy}" text-anchor="${anchor}">${a.l} <tspan class="rd-val">${has[i]?pct(a.ok/a.n):'–'}</tspan></text>`;
+    const[px,py]=has[i]?pt(i,R*a.ok/a.n):pt(i,R);
+    if(has[i])s+=`<circle class="rd-dot" cx="${px}" cy="${py}" r="4"/>`;
+    s+=`<circle class="pg-hit" cx="${px}" cy="${py}" r="13" data-tip="${a.l}: ${has[i]?`${pct(a.ok/a.n)} of ${a.n}`:`${a.n} answer${a.n===1?'':'s'}, need 3`}"/>`});
+  s+='</svg>';
+  return `<div class="rd-card"><h4 class="sh">${title}</h4><div class="progwrap">${s}<div class="pg-tip" hidden></div></div>
+    <p class="note">${data.length<3?'Answer a few more of these drills to fill this in.':`Weakest: <strong>${worst.l}</strong> (${pct(worst.ok/worst.n)} of ${worst.n}).`}</p></div>`}
+function radarsHTML(){
+  const st=k=>({n:(STATS[k]||{}).n||0,ok:(STATS[k]||{}).ok||0});
+  const sum=f=>Object.keys(STATS).filter(f).reduce((a,k)=>(a.n+=STATS[k].n,a.ok+=STATS[k].ok,a),{n:0,ok:0});
+  const seat=POS.map(p=>({l:p,...st('@seat:'+p)}));
+  const pre=[['RFI','rfi'],['vs open','open'],['vs 3-bet','3bet'],['Limpers','limp'],['Squeeze','squeeze']].map(([l,k])=>({l,...sum(x=>x.startsWith(PF_PREFIX[k]))}));
+  const tex=TEXTURES.map(t=>({l:t,...st('@tex:'+t)}));
+  const hand=[['Two pair+',NUTK],['Top pair+',['over','top']],['Weak pair',['weak']],['Draws',['draw','wdraw']],['Air',['air']]]
+    .map(([l,ks])=>({l,...sum(x=>x.startsWith('Postflop · ')&&ks.some(k=>x.endsWith(' · '+CATL[k])))}));
+  const math=MT.map(([k,l])=>({l,...st('Math · '+l)}));
+  return `<h4 class="sh">Skill radar</h4><p class="note">Accuracy on each spoke: centre is 0%, the rim is 100%. Tap a point for the count.</p>
+  <div class="radars">${radarHTML('By seat',seat)}${radarHTML('Preflop spots',pre)}${radarHTML('Board texture',tex)}${radarHTML('Postflop hand type',hand)}${radarHTML('Math',math)}</div>`}
 function progressHTML(){
   const days=[];for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;days.push([k,DAYS[k]])}
   const active=days.filter(d=>d[1]&&d[1].n);if(!active.length)return '';
@@ -1294,8 +1344,9 @@ document.addEventListener('click',e=>{
   if(d.auth){if(d.auth==='sync')return Cloud.pull();return authAct(d.auth)}
   if(t.id==='openSettings')return openSettings();
   if(d.set)return d.set==='save'?saveSettings():closeSettings()});
-function showTip(e){const t=e.target.closest&&e.target.closest('.pg-hit'),tip=document.querySelector('.pg-tip');if(!tip)return;
-  if(!t){tip.hidden=true;return}const w=tip.parentElement.getBoundingClientRect(),r=t.getBoundingClientRect();
+function showTip(e){const t=e.target.closest&&e.target.closest('.pg-hit');
+  document.querySelectorAll('.pg-tip').forEach(x=>{if(!t||!x.parentElement.contains(t))x.hidden=true});if(!t)return;
+  const tip=t.closest('.progwrap').querySelector('.pg-tip'),w=tip.parentElement.getBoundingClientRect(),r=t.getBoundingClientRect();
   tip.textContent=t.dataset.tip;tip.hidden=false;tip.style.left=Math.min(w.width-70,Math.max(70,r.left-w.left+r.width/2))+'px'}
 document.addEventListener('pointerover',showTip);document.addEventListener('pointerdown',showTip);
 document.addEventListener('change',e=>{
