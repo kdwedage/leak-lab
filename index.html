@@ -44,10 +44,12 @@
   --draw:#4480D0; --air:#4E5D55; --face:#F3F5F4; color-scheme:dark;
 }
 *{box-sizing:border-box}
-:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{color-scheme:light}
 [hidden]{display:none!important}
 img{max-width:100%}
-body{margin:0}
+/* Shell: the body is pinned to the screen; .scroller scrolls; the tab bar sits below it, so it can never float or cover content */
+body{margin:0;position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
+.scroller{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
 .sync{display:block;margin-top:2px;cursor:pointer}
 .sync.ok{color:var(--good)}.sync.warn{color:var(--brass)}.sync.err{color:var(--bad)}
 .sheet h3{margin:6px 0 0;font:800 16px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.04em}
@@ -55,15 +57,15 @@ body{margin:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 button{font:inherit;color:inherit}
 button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.app{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:0 calc(92px + env(safe-area-inset-bottom,0px))}
-header.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:12px;padding-block:12px 10px;border-bottom:1px solid var(--line)}
+.app{max-width:760px;margin:0 auto;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px));padding-block:0 28px}
+header.hud{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;align-items:center;gap:12px;padding-block:calc(12px + env(safe-area-inset-top,0px)) 10px;border-bottom:1px solid var(--line)}
 .brand{font-family:var(--f-display);font-weight:850;font-stretch:72%;font-size:24px;letter-spacing:.02em;text-transform:uppercase;line-height:.95}
 .brand small{display:block;font:500 11px/1.2 var(--f-mono);letter-spacing:.02em;color:var(--muted);text-transform:none;margin-top:4px;font-stretch:100%}
 .sess{margin-left:auto;font:500 12px/1.35 var(--f-mono);color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
 .sess b{color:var(--ink);font-weight:600}
 .iconbtn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;width:40px;height:40px;display:grid;place-items:center;cursor:pointer;color:var(--muted)}
 .iconbtn svg{width:20px;height:20px}
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs{position:relative;flex:none;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
 nav.tabs button{appearance:none;border:0;background:none;padding:9px 2px 11px;font:600 11px var(--f-body);color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;position:relative}
 nav.tabs button .g{font:800 17px/1 var(--f-display);font-stretch:75%;letter-spacing:.02em}
@@ -220,7 +222,7 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 .blk .act.picked{box-shadow:inset 0 0 0 3px var(--ink)}
 .blk .act.right{box-shadow:inset 0 0 0 3px var(--good)}
 .busy{font:500 12px var(--f-mono);color:var(--muted)}
-.wu-bar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 66px);z-index:4;background:var(--ink);color:var(--bg);border-radius:0 0 12px 12px;padding:8px 12px;display:flex;gap:10px;align-items:center;font:600 12.5px var(--f-mono)}
+.wu-bar{position:sticky;top:var(--hud-h,67px);z-index:4;background:var(--ink);color:var(--bg);border-radius:0 0 12px 12px;padding:8px 12px;display:flex;gap:10px;align-items:center;font:600 12.5px var(--f-mono)}
 .wu-bar .wu-track{flex:1;height:6px;border-radius:3px;background:color-mix(in srgb,var(--bg) 25%,transparent);overflow:hidden}
 .wu-bar .wu-track i{display:block;height:100%;background:var(--brass)}
 .wu-bar button{appearance:none;border:1px solid currentColor;background:none;color:inherit;border-radius:8px;padding:3px 8px;font:inherit;cursor:pointer}
@@ -259,7 +261,7 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 </head>
 <body>
 
-<div class="app">
+<div class="scroller" id="scroller"><div class="app">
   <header class="hud">
     <div class="brand">Leak Lab<small id="brand-sub">NL50 · $0.25/$0.50 · 6-max</small></div>
     <div class="sess" id="sess"></div>
@@ -274,7 +276,7 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
     <section class="view" id="v-charts" hidden></section>
     <section class="view" id="v-stats" hidden></section>
   </main>
-</div>
+</div></div>
 <nav class="tabs"><div class="in">
   <button data-tab="preflop" class="on"><span class="g">PRE</span>Preflop</button>
   <button data-tab="reading"><span class="g">RNG</span>Ranges</button>
@@ -1551,7 +1553,7 @@ function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
 let cur='preflop';
 const RENDER={preflop:renderPF,reading:renderRR,math:renderMath,postflop:renderPP,charts:renderCharts,stats:renderStats};
 function show(tab){
-  Timer.stop();cur=tab;resetArm=false;
+  Timer.stop();cur=tab;resetArm=false;const sc=$("#scroller");if(sc)sc.scrollTop=0;
   document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!=='v-'+tab);
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   RENDER[tab]();try{localStorage.setItem('ll_tab',tab)}catch(e){}}
@@ -1614,6 +1616,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.key===' '){const n=v.querySelector('[data-next]');if(n){e.preventDefault();n.click()}}});
 
 hud();
+// the warm-up bar sticks just under the header, whatever height the header wraps to
+{const hd=document.querySelector('header.hud'),setH=()=>document.documentElement.style.setProperty('--hud-h',hd.offsetHeight+'px');setH();if(window.ResizeObserver)new ResizeObserver(setH).observe(hd)}
 let startTab='preflop';try{const t=localStorage.getItem('ll_tab');if(t&&RENDER[t])startTab=t}catch(e){}
 show(startTab);
 Cloud.init();
