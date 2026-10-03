@@ -295,7 +295,7 @@ const $=s=>document.querySelector(s);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
-const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:4,stackBB:200,sizing:'std',focus:true,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:4,stackBB:200,sizing:'std',focus:true,sound:false,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
 // v2: default open became $1.25 ($1.50 from the SB); older saved settings are upgraded once.
 function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5}if((c.v||1)<3)c.sizing='std';if((c.v||1)<4)c.stackBB=200;c.v=4;return c}
 let CFG=migrateCfg(load('ll_cfg',{}));
@@ -531,7 +531,21 @@ const Timer={raf:0,t0:0,cb:null,
 let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]),DAYS=load('ll_days',{});
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 const sess={n:0,ok:0,streak:0,best:0};
+// ---- sounds: rising two-note chime when right, low falling buzz when wrong, an extra high note every 10 in a row
+const Sound={ctx:null,batch:null,
+  unlock(){if(this.ctx||!CFG.sound)return;try{this.ctx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}},
+  tone(f0,f1,start,dur,type,vol){const c=this.ctx,o=c.createOscillator(),g=c.createGain(),t=c.currentTime+start;
+    o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(c.destination);o.start(t);o.stop(t+dur+.02)},
+  play(ok,streak){if(!CFG.sound)return;this.unlock();const c=this.ctx;if(!c)return;if(c.state==='suspended')c.resume();
+    if(ok){this.tone(659,659,0,.11,'triangle',.18);this.tone(988,988,.09,.16,'triangle',.18);if(streak&&streak%10===0)this.tone(1319,1319,.2,.22,'sine',.14)}
+    else{this.tone(220,150,0,.26,'sawtooth',.07);this.tone(110,80,0,.26,'sine',.16)}},
+  // record() can fire several times for one answer (postflop grades 5 hands); collect them and play one sound
+  note(ok){if(!this.batch){this.batch={ok:true};setTimeout(()=>{const b=this.batch;this.batch=null;this.play(b.ok,sess.streak)},25)}if(!ok)this.batch.ok=false}};
+document.addEventListener('pointerdown',()=>Sound.unlock(),{capture:true});document.addEventListener('keydown',()=>Sound.unlock(),{capture:true});
 function record(key,ok,ms,drill,miss,dims=[]){
+  Sound.note(ok);
   const s=STATS[key]||(STATS[key]={n:0,ok:0,ms:0,drill});s.n++;if(ok)s.ok++;s.ms+=Math.min(ms||0,120000);s.drill=drill;s.last=Date.now();
   const t=Date.now(),m=(!ok&&miss)?{t,k:key,m:miss}:null;
   if(m){MISSES.unshift(m);MISSES=MISSES.slice(0,40)}
@@ -1408,6 +1422,7 @@ function openSettings(){
     <label class="f"><span>Timer<small>Answer before the bar runs out</small></span><input type="checkbox" id="s-timer" ${CFG.timerOn?'checked':''}></label>
     ${num('s-pf','Preflop seconds','',CFG.pfSec,1,2,60)}${num('s-rr','Range question seconds','Range builder gets 3×',CFG.rrSec,1,5,120)}
     ${num('s-mt','Math seconds','',CFG.mathSec,1,3,90)}${num('s-pp','Postflop seconds per spot','',CFG.postSec,1,10,180)}
+    <label class="f"><span>Sounds<small>Chime when right, buzz when wrong. iPhone plays them only with the ring/silent switch on ring.</small></span><input type="checkbox" id="s-sound" ${CFG.sound?'checked':''}></label>
     <label class="f"><span>Focus on my leaks<small>Deal weak seats and drills more often; replay hands you missed</small></span><input type="checkbox" id="s-focus" ${CFG.focus?'checked':''}></label>
     <label class="f"><span>Auto-advance when correct<small>Preflop and math drills</small></span><input type="checkbox" id="s-auto" ${CFG.autoNext?'checked':''}></label>
     ${num('s-it','Equity samples per hand','Higher is slower and more precise',CFG.iters,100,200,3000)}
@@ -1416,7 +1431,7 @@ function saveSettings(){
   const v=id=>parseFloat($(id).value);
   const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
   const t0=CFG.table;
-  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,focus:$('#s-focus').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
+  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,focus:$('#s-focus').checked,sound:$('#s-sound').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
     openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:4,stackBB:$('#s-stack').value==='100'?100:200,sizing:$('#s-sizing').value==='custom'?'custom':'std',tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
   if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;setTable();loadSolver();if(CFG.table!==t0)rr.target='random';save('ll_cfg',CFG);hud();Cloud.saveUser();closeSettings();show(cur)}
 function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
