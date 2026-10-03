@@ -8,9 +8,10 @@ const js = html.split('<script>')[1].split('</script>')[0];
 const core = js.split('// ================= rendering helpers')[0];
 const pre = js.slice(js.indexOf('const after='), js.indexOf('const deadBlinds'));
 const api = new Function('localStorage', core + '\n' + pre + `
-  return {rfiSet, villFlatSet, call3bSet, rng, setCombos, CFG};`)({ getItem: () => null, setItem: () => {} });
+  return {rfiSet, villFlatSet, call3bSet, rng, setCombos, CFG, HF};`)({ getItem: () => null, setItem: () => {} });
 api.CFG.stackBB = DEPTH;   // deep-stack chart adjustments follow the depth
-const str = s => [...s].join(',');
+// 50% hands go to the solver with weight 0.5
+const str = s => [...s].map(c => api.HF(s).has(c) ? c + ':0.5' : c).join(',');
 const open = 2.5, sbOpen = 3;
 // Each spot: who is out of position, both ranges, pot and stack in big blinds, and who raised preflop.
 const spots = {

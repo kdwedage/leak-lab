@@ -154,6 +154,7 @@ h2.vt{font:850 30px/1 var(--f-display);font-stretch:70%;text-transform:uppercase
 .legend{display:flex;flex-wrap:wrap;gap:10px;font:500 11.5px var(--f-mono);color:var(--muted)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px;background:var(--fold);border:1px solid var(--line)}
 .legend i.raise{background:var(--raise)}.legend i.call{background:var(--call)}.legend i.four{background:var(--four)}.legend i.limp{background:var(--limp)}.legend i.draw{background:var(--draw)}.legend i.air{background:var(--air)}.legend i.extra{background:var(--bad)}.legend i.miss{background:var(--limp)}
+.legend i.mix{background:linear-gradient(135deg,var(--raise) 50%,var(--fold) 50%)}
 .legend i.na{background:repeating-linear-gradient(135deg,var(--na) 0 2px,var(--fold) 2px 4px)}
 .legend i.out{background:repeating-linear-gradient(135deg,var(--sunk) 0 2px,var(--air) 2px 4px)}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -177,6 +178,7 @@ h4.sh{margin:0;font:800 14px var(--f-display);font-stretch:85%;text-transform:up
 .hrow .hc{display:flex;gap:4px}
 .hrow .tags{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .tg{appearance:none;border:1px solid var(--line);border-radius:9px;background:var(--bg);min-height:42px;font:800 13.5px var(--f-display);font-stretch:85%;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;touch-action:manipulation}
+.tags.n4{grid-template-columns:repeat(4,1fr)}
 .tg.on.t-Value,.tg.on.t-Raise,.tg.on.t-Bet,.tg.on.t-All-in{background:var(--raise);border-color:var(--raise);color:var(--on-color)}
 .tg.on.t-Bluff{background:var(--four);border-color:var(--four);color:var(--on-color)}
 .tg.on.t-Call{background:var(--call);border-color:var(--call);color:var(--on-color)}
@@ -218,6 +220,13 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 .blk .act.picked{box-shadow:inset 0 0 0 3px var(--ink)}
 .blk .act.right{box-shadow:inset 0 0 0 3px var(--good)}
 .busy{font:500 12px var(--f-mono);color:var(--muted)}
+.wu-bar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 66px);z-index:4;background:var(--ink);color:var(--bg);border-radius:0 0 12px 12px;padding:8px 12px;display:flex;gap:10px;align-items:center;font:600 12.5px var(--f-mono)}
+.wu-bar .wu-track{flex:1;height:6px;border-radius:3px;background:color-mix(in srgb,var(--bg) 25%,transparent);overflow:hidden}
+.wu-bar .wu-track i{display:block;height:100%;background:var(--brass)}
+.wu-bar button{appearance:none;border:1px solid currentColor;background:none;color:inherit;border-radius:8px;padding:3px 8px;font:inherit;cursor:pointer}
+.wu-card{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.wu-hist{display:flex;gap:4px;align-items:flex-end;height:46px}
+.wu-hist i{flex:1;max-width:22px;background:var(--accent);border-radius:3px 3px 0 0;min-height:3px}
 .seat.turn{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
 .seat .mini{display:block;font:600 11px var(--f-mono);margin-top:2px;white-space:nowrap}
 .act small.amt{display:block;font:500 11px var(--f-mono);opacity:.85;text-transform:none;letter-spacing:0;margin-top:3px}
@@ -256,6 +265,7 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
     <div class="sess" id="sess"></div>
     <button class="iconbtn" id="openSettings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </header>
+  <div class="wu-bar" id="wu-bar" hidden></div>
   <main>
     <section class="view" id="v-preflop"></section>
     <section class="view" id="v-reading" hidden></section>
@@ -295,7 +305,7 @@ const $=s=>document.querySelector(s);
 function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 
-const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:4,stackBB:200,sizing:'std',focus:true,sound:false,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
+const DEF_CFG={timerOn:true,pfSec:6,rrSec:20,mathSec:15,postSec:40,openSize:1.25,sbOpen:1.5,v:4,stackBB:200,sizing:'std',focus:true,sound:false,exploit:false,table:6,ante:0,rakePct:0,rakeCap:3,tbMin:1.5,tbMax:3,autoNext:true,iters:700};
 // v2: default open became $1.25 ($1.50 from the SB); older saved settings are upgraded once.
 function migrateCfg(c){c=Object.assign({},DEF_CFG,c);if((c.v||1)<2){c.openSize=1.25;c.sbOpen=1.5}if((c.v||1)<3)c.sizing='std';if((c.v||1)<4)c.stackBB=200;c.v=4;return c}
 let CFG=migrateCfg(load('ll_cfg',{}));
@@ -330,7 +340,7 @@ for(let i=0;i<13;i++)for(let j=0;j<13;j++){const hi=12-Math.min(i,j),lo=12-Math.
 const CLSI=Object.fromEntries(CLS.map((c,i)=>[c,i]));
 function neighbors(c){const k=CLSI[c],i=Math.floor(k/13),j=k%13,o=[];[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{const x=i+a,y=j+b;if(x>=0&&x<13&&y>=0&&y<13)o.push(CLS[x*13+y])});return o}
 const nCombos=c=>c.length===2?6:c[2]==='s'?4:12;
-const setCombos=s=>{let n=0;s.forEach(c=>n+=nCombos(c));return n};
+const setCombos=s=>{let n=0;const hf=s.half;s.forEach(c=>n+=nCombos(c)*(hf&&hf.has(c)?.5:1));return n};
 function comboCls(a,b){let r1=a>>2,r2=b>>2;if(r1<r2)[r1,r2]=[r2,r1];if(r1===r2)return R[r1]+R[r1];return R[r1]+R[r2]+((a&3)===(b&3)?'s':'o')}
 function classCombos(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]),o=[];
   if(h===l){for(let a=0;a<4;a++)for(let b=a+1;b<4;b++)o.push([h*4+a,h*4+b])}
@@ -340,56 +350,61 @@ function classCombos(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]),o=[];
 function rangeCombos(set,dead){const o=[];for(const c of set)for(const cb of classCombos(c))if(!dead.has(cb[0])&&!dead.has(cb[1]))o.push({cls:c,cards:cb});return o}
 
 function parseRange(str){
-  const set=new Set();
+  const out=new Set(),half=new Set();
   for(let tok of String(str).split(',')){
-    tok=tok.trim();if(tok.length<2)continue;
+    tok=tok.trim();let w=1;const m=tok.match(/:\s*(\d*\.?\d+)$/);if(m){w=parseFloat(m[1]);tok=tok.slice(0,m.index).trim()}
+    if(tok.length<2||w<.25)continue;const set=new Set();
+    parseTok(tok,set);set.forEach(c=>{out.add(c);if(w<.75)half.add(c)});
+    if(w>=.75)set.forEach(c=>half.delete(c))}
+  out.half=half;return out}
+function parseTok(tok,set){
+  {
     const plus=tok.endsWith('+');if(plus)tok=tok.slice(0,-1);
     if(tok.includes('-')){
       const[a,b]=tok.split('-').map(s=>s.trim());
       const h1=R.indexOf(a[0]),l1=R.indexOf(a[1]),h2=R.indexOf(b[0]),l2=R.indexOf(b[1]);
-      if(h1<0||l1<0||h2<0||l2<0)continue;
-      if(h1===l1){for(let r=Math.min(h1,h2);r<=Math.max(h1,h2);r++)set.add(R[r]+R[r]);continue}
+      if(h1<0||l1<0||h2<0||l2<0)return;
+      if(h1===l1){for(let r=Math.min(h1,h2);r<=Math.max(h1,h2);r++)set.add(R[r]+R[r]);return}
       const t=a[2]||'';for(const ty of t?[t]:['s','o'])for(let r=Math.min(l1,l2);r<=Math.max(l1,l2);r++)if(r!==h1)set.add(R[h1]+R[r]+ty);
-      continue}
+      return}
     let h=R.indexOf(tok[0]),l=R.indexOf(tok[1]);const t=tok[2]||'';
-    if(h<0||l<0)continue;
-    if(h===l){if(plus){for(let r=h;r<13;r++)set.add(R[r]+R[r])}else set.add(R[h]+R[h]);continue}
+    if(h<0||l<0)return;
+    if(h===l){if(plus){for(let r=h;r<13;r++)set.add(R[r]+R[r])}else set.add(R[h]+R[h]);return}
     if(l>h)[h,l]=[l,h];
     for(const ty of t?[t]:['s','o']){if(plus){for(let r=l;r<h;r++)set.add(R[h]+R[r]+ty)}else set.add(R[h]+R[l]+ty)}
-  }
-  return set}
+  }}
 
 const DEF_RANGES={
- 'rfi.UTG':'22+, A2s+, K9s+, Q9s+, J9s+, T9s, 98s, 87s, 76s, 65s, ATo+, KJo+, QJo',
- 'rfi.HJ':'22+, A2s+, K7s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, 54s, A9o+, KTo+, QTo+, JTo',
- 'rfi.CO':'22+, A2s+, K4s+, Q7s+, J7s+, T7s+, 96s+, 86s+, 75s+, 64s+, 54s, A7o+, A5o, K9o+, Q9o+, J9o+, T9o',
- 'rfi.BTN':'22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
- 'rfi.SB':'22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, A2o+, K8o+, Q9o+, J9o+, T9o',
- 'rfi.UTG9':'55+, A9s+, A5s, KTs+, QTs+, JTs, T9s, AJo+, KQo',
- 'rfi.UTG1':'44+, A8s+, A5s-A4s, KTs+, QTs+, JTs, T9s, 98s, AJo+, KQo',
- 'rfi.UTG2':'33+, A8s+, A5s-A4s, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo+, KJo+',
- '3bet_vs.EP9':'QQ+, AKs, AKo, A5s',
- 'flat.vsEP9':'22-JJ, AJs-AQs, KQs, KJs, QJs, JTs, T9s, AQo',
- 'bbdef.vsEP9':'22+, A2s+, K9s+, Q9s+, J9s+, T8s+, 98s, 87s, 76s, 65s, AJo+, KQo',
- '3bet_vs.UTG':'QQ+, AKs, AKo, A5s-A4s',
- '3bet_vs.HJ':'JJ+, AQs+, AKo, KQs, A5s-A4s',
- '3bet_vs.CO':'TT+, AJs+, KQs, KJs, QJs, AQo+, A5s-A3s',
- '3bet_vs.BTN':'99+, ATs+, KTs+, QTs+, JTs, AJo+, KQo, A5s-A2s, 76s, 65s',
- '3bet_vs.SB':'88+, A8s+, KTs+, QTs+, JTs, T9s, ATo+, KJo+, A5s-A2s, 98s, 87s',
- 'flat.vsUTG':'22-JJ, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, AQo',
- 'flat.vsHJ':'22-TT, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo-AQo, KQo',
- 'flat.vsCO':'22-99, A9s-AJs, K9s+, Q9s+, J9s+, T8s+, 97s+, 87s, 76s, 65s, ATo-AQo, KJo+, QJo',
- 'flat.SBvsBTN':'22-88, A6s-A9s, KTs-KJs, QTs+, JTs',
- 'bbdef.vsUTG':'22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, AJo+, KJo+, QJo',
- 'bbdef.vsHJ':'22+, A2s+, K6s+, Q8s+, J8s+, T7s+, 96s+, 85s+, 75s+, 64s+, 54s, ATo+, KTo+, QTo+, JTo',
- 'bbdef.vsCO':'22+, A2s+, K2s+, Q5s+, J7s+, T7s+, 96s+, 85s+, 74s+, 63s+, 53s+, 43s, A8o+, K9o+, Q9o+, J9o+, T9o, 98o',
- 'bbdef.vsBTN':'22+, A2s+, K2s+, Q2s+, J4s+, T6s+, 95s+, 84s+, 74s+, 63s+, 52s+, 42s+, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
- 'bbdef.vsSB':'22+, A2s+, K2s+, Q2s+, J2s+, T5s+, 95s+, 84s+, 73s+, 63s+, 52s+, 42s+, 32s, A2o+, K5o+, Q7o+, J7o+, T7o+, 97o+, 86o+, 76o, 65o',
- '4bet.EP':'QQ+, AKs, AKo',
- '4bet.LP':'QQ+, AKs, AKo, A5s',
- 'call3b.IP.EP':'77-JJ, AJs-AQs, KQs, KJs, QJs, JTs, AQo',
- 'call3b.IP.LP':'22-JJ, ATs-AQs, KTs+, QTs+, JTs, T9s, 98s, 87s, AJo-AQo, KQo',
- 'call3b.OOP':'88-JJ, AJs-AQs, KQs, QJs, JTs, AQo',
+ 'rfi.UTG':'55+, 44:0.5, 33:0.5, 22:0.5, A2s+, K9s+, Q9s+, J9s+, T9s, 98s:0.5, 87s:0.5, 76s:0.5, 65s:0.5, AJo+, KQo, ATo:0.5, KJo:0.5',
+ 'rfi.HJ':'22+, A2s+, K7s+, K6s:0.5, Q9s+, Q8s:0.5, J9s+, T8s+, 98s, 87s, 76s:0.5, 65s:0.5, 54s:0.5, ATo+, A9o:0.5, KJo+, KTo:0.5, QJo',
+ 'rfi.CO':'22+, A2s+, K4s+, K3s:0.5, Q7s+, Q6s:0.5, J8s+, J7s:0.5, T8s+, T7s:0.5, 97s+, 86s+, 75s:0.5, 76s, 65s, 54s, A9o+, A8o:0.5, A5o:0.5, KTo+, QTo+, JTo',
+ 'rfi.BTN':'22+, A2s+, K2s+, Q4s+, Q3s:0.5, J6s+, J5s:0.5, T6s+, 96s+, 95s:0.5, 85s+, 75s+, 74s:0.5, 64s+, 54s, 53s:0.5, 43s:0.5, A4o+, A2o:0.5, A3o:0.5, K8o+, K7o:0.5, Q9o+, Q8o:0.5, J9o+, J8o:0.5, T9o, T8o:0.5, 98o:0.5',
+ 'rfi.SB':'22+, A2s+, K2s+, Q5s+, Q4s:0.5, J7s+, J6s:0.5, T7s+, T6s:0.5, 97s+, 96s:0.5, 86s+, 75s+, 64s:0.5, 65s, 54s, A5o+, A2o:0.5, A3o:0.5, A4o:0.5, K9o+, K8o:0.5, QTo+, Q9o:0.5, JTo, J9o:0.5, T9o:0.5',
+ 'rfi.UTG9':'44+, 33:0.5, 22:0.5, A9s+, A8s:0.5, A5s, A4s:0.5, KTs+, K9s:0.5, QTs+, JTs, T9s:0.5, AJo+, ATo:0.5, KQo',
+ 'rfi.UTG1':'33+, 22:0.5, A8s+, A5s-A4s, A3s:0.5, KTs+, K9s:0.5, QTs+, Q9s:0.5, JTs, T9s, 98s:0.5, AJo+, ATo:0.5, KQo, KJo:0.5',
+ 'rfi.UTG2':'22+, A7s+, A5s-A3s, A6s:0.5, A2s:0.5, K9s+, Q9s+, J9s+, T9s, 98s:0.5, 87s:0.5, AJo+, ATo:0.5, KJo+, QJo:0.5',
+ '3bet_vs.EP9':'QQ+, JJ:0.5, AKs, AQs:0.5, KQs:0.5, A5s:0.5, AKo',
+ 'flat.vsEP9':'JJ-77, AJs, ATs:0.5, KQs:0.5, KJs, QJs, JTs, T9s:0.5',
+ 'bbdef.vsEP9':'22+, A2s+, K8s+, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, AJo+, ATo:0.5, KQo, KJo:0.5, QJo:0.5',
+ '3bet_vs.UTG':'QQ+, JJ:0.5, AKs, AQs, AJs:0.5, ATs:0.5, KQs:0.5, KJs:0.5, A5s:0.5, A4s:0.5, AKo, AQo:0.5',
+ '3bet_vs.HJ':'QQ+, JJ:0.5, TT:0.5, AQs+, AJs:0.5, ATs:0.5, KQs, KJs:0.5, KTs:0.5, QJs:0.5, A5s, A4s:0.5, A3s:0.5, 76s:0.5, 65s:0.5, AKo, AQo:0.5',
+ '3bet_vs.CO':'JJ+, TT:0.5, AJs+, ATs:0.5, KJs+, KTs:0.5, QJs, QTs:0.5, JTs:0.5, T9s:0.5, A5s-A4s, A3s:0.5, 76s:0.5, 65s:0.5, 54s:0.5, AQo+, AJo:0.5, KQo:0.5',
+ '3bet_vs.BTN':'TT+, 99:0.5, 88:0.5, ATs+, A9s:0.5, A5s-A2s, KTs+, K9s:0.5, QTs+, Q9s:0.5, JTs, J9s:0.5, T9s:0.5, 98s:0.5, 87s:0.5, 76s, 65s, 54s:0.5, AJo+, ATo:0.5, KQo, KJo:0.5, QJo:0.5',
+ '3bet_vs.SB':'88+, 77:0.5, A8s+, A7s:0.5, A6s:0.5, A5s-A2s, KTs+, K9s:0.5, QTs+, Q9s:0.5, JTs, J9s:0.5, T9s, 98s:0.5, 87s:0.5, 76s:0.5, 65s:0.5, ATo+, A9o:0.5, KJo+, KTo:0.5, QJo:0.5',
+ 'flat.vsUTG':'JJ-77, 66:0.5, AQs:0.5, AJs, ATs, KQs:0.5, KJs, KTs:0.5, QJs, QTs:0.5, JTs, T9s, 98s:0.5, AQo:0.5',
+ 'flat.vsHJ':'JJ-66, 55:0.5, AJs, ATs, A9s:0.5, KJs, KTs, QJs, QTs, JTs, T9s, 98s:0.5, 87s:0.5, AQo:0.5, AJo:0.5, KQo:0.5',
+ 'flat.vsCO':'TT-55, 44:0.5, ATs, A9s, A8s:0.5, KTs:0.5, K9s, Q9s+, J9s+, T9s, T8s:0.5, 98s, 87s, 76s:0.5, AJo:0.5, KQo:0.5, KJo:0.5',
+ 'flat.SBvsBTN':'99-77:0.5, AQs:0.5, AJs:0.5, KQs:0.5, QJs:0.5, JTs:0.5',
+ 'bbdef.vsUTG':'22+, A2s+, K6s+, Q8s+, J8s+, T8s+, T7s:0.5, 97s+, 96s:0.5, 86s+, 85s:0.5, 75s+, 64s+, 54s, 53s:0.5, ATo+, A9o:0.5, KTo+, QTo+, JTo:0.5',
+ 'bbdef.vsHJ':'22+, A2s+, K4s+, K2s:0.5, K3s:0.5, Q7s+, Q6s:0.5, J7s+, T7s+, 96s+, 85s+, 75s+, 64s+, 53s+, 43s:0.5, A8o+, A7o:0.5, A5o:0.5, KTo+, K9o:0.5, QTo+, Q9o:0.5, J9o+, T9o:0.5',
+ 'bbdef.vsCO':'22+, A2s+, K2s+, Q4s+, Q3s:0.5, J6s+, J5s:0.5, T6s+, 96s+, 95s:0.5, 85s+, 74s+, 63s+, 53s+, 52s:0.5, 43s, A4o+, A2o:0.5, A3o:0.5, K8o+, K7o:0.5, Q9o+, Q8o:0.5, J8o+, T8o+, 98o, 97o:0.5, 87o:0.5',
+ 'bbdef.vsBTN':'22+, A2s+, K2s+, Q2s+, J3s+, J2s:0.5, T5s+, T4s:0.5, 95s+, 94s:0.5, 84s+, 74s+, 73s:0.5, 63s+, 52s+, 42s+, 32s:0.5, A2o+, K5o+, K4o:0.5, Q7o+, Q6o:0.5, J7o+, T7o+, 97o+, 86o+, 76o, 75o:0.5, 65o:0.5, 54o:0.5',
+ 'bbdef.vsSB':'22+, A2s+, K2s+, Q2s+, J2s+, T3s+, T2s:0.5, 94s+, 93s:0.5, 84s+, 83s:0.5, 73s+, 63s+, 62s:0.5, 52s+, 42s+, 32s, A2o+, K3o+, K2o:0.5, Q5o+, Q4o:0.5, J6o+, T6o+, 96o+, 86o+, 75o+, 64o:0.5, 65o, 54o',
+ '4bet.EP':'KK+, QQ:0.5, AKs, AKo:0.5, A5s:0.5',
+ '4bet.LP':'QQ+, JJ:0.5, AKs, AKo, A5s:0.5, A4s:0.5',
+ 'call3b.IP.EP':'77-QQ, AJs-AQs, ATs:0.5, KQs, KJs, QJs, JTs, T9s:0.5, AKo, AQo:0.5',
+ 'call3b.IP.LP':'22-JJ, A9s-AQs, A8s:0.5, KTs+, K9s:0.5, QTs+, JTs, J9s:0.5, T9s, 98s, 87s:0.5, 76s:0.5, AJo-AQo, KQo, A5s:0.5, A4s:0.5',
+ 'call3b.OOP':'88-QQ, 77:0.5, AJs-AQs, ATs:0.5, KQs, KJs:0.5, QJs, JTs:0.5, AKo, AQo',
  'call3b.addMid':'22-66, A2s-A9s, K9s-KJs, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 65s, 54s, ATo-AJo, KJo+, QJo',
  'call3b.deepIP':'22-66, A2s-A5s, K9s, Q9s+, J9s+, T8s+, 97s+, 86s+, 75s+, 64s+, 54s',
  'call3b.addMin':'22+, A2s+, K2s+, Q2s+, J2s+, T2s+, 92s+, 82s+, 72s+, 62s+, 52s+, 42s+, 32s, A2o+, K7o+, Q8o+, J8o+, T8o+, 97o+, 87o, 76o',
@@ -429,16 +444,26 @@ const RANGE_LABELS={
 let customRanges=load('ll_ranges',{});
 const _rc={};
 function rng(key){const s=customRanges[key]??DEF_RANGES[key];if(!_rc[key]||_rc[key].s!==s)_rc[key]={s,set:parseRange(s)};return _rc[key].set}
-const minus=(a,b)=>new Set([...a].filter(x=>!b.has(x)));
-const inter=(a,b)=>new Set([...a].filter(x=>b.has(x)));
-const union=(...ss)=>{const o=new Set();ss.forEach(s=>s.forEach(x=>o.add(x)));return o};
+const HF=s=>(s&&s.half)||new Set();
+function withHalf(set,half){set.half=new Set([...half].filter(x=>set.has(x)));return set}
+const minus=(a,b)=>withHalf(new Set([...a].filter(x=>!b.has(x)||HF(b).has(x))),HF(a));
+const inter=(a,b)=>withHalf(new Set([...a].filter(x=>b.has(x))),HF(a));
+const union=(...ss)=>{const o=new Set(),full=new Set();ss.forEach(s=>s.forEach(x=>{o.add(x);if(!HF(s).has(x))full.add(x)}));return withHalf(o,[...o].filter(x=>!full.has(x)))};
+// Grading helper: ordered [action, range] pairs; the first range holding the hand gives the answer.
+// If the hand is only a 50% member of that range, the next action that applies is also correct (fn.alt).
+function dec(list,dflt){list=list.filter(x=>x[1]);
+  const f=c=>{for(const[a,s]of list)if(s.has(c))return a;return dflt};
+  f.alt=c=>{for(let i=0;i<list.length;i++){const[a,s]=list[i];if(!s.has(c))continue;if(!HF(s).has(c))return null;
+    for(let j=i+1;j<list.length;j++)if(list[j][1].has(c))return list[j][0];return dflt}return null};
+  return f}
+const okList=(fn,c)=>{const a=fn(c),b=fn.alt?fn.alt(c):null;return b&&b!==a?[a,b]:[a]};
 // One "step" moves every edge of a range by one notch: K9s+ ↔ K8s+, 77-JJ ↔ 66-JJ. Used for ante (wider) and rake (tighter).
 function stronger(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]);if(h===l)return h<12?R[h+1]+R[h+1]:null;return l+1<h?R[h]+R[l+1]+c[2]:null}
 function weaker(c){const h=R.indexOf(c[0]),l=R.indexOf(c[1]);if(h===l)return h>0?R[h-1]+R[h-1]:null;return l>0?R[h]+R[l-1]+c[2]:null}
 function adjust(set,n){let s=set;for(let i=0;i<Math.abs(n);i++){const o=new Set(s);
   if(n>0)CLS.forEach(c=>{if(!s.has(c)){const st=stronger(c);if(st&&s.has(st))o.add(c)}});
   else s.forEach(c=>{const w=weaker(c);if(w&&!s.has(w))o.delete(c)});
-  s=o}return s}
+  s=o}return withHalf(s===set?new Set(s):s,HF(set))}
 const rfiSet=p=>adjust(rng('rfi.'+rk(p)),anteSteps());
 
 // ================= evaluator =================
@@ -472,7 +497,8 @@ const CATCOL={nut:'four',set:'four',two:'four',trips:'four',over:'raise',top:'ra
 const CATBAR={nut:'nut',set:'nut',two:'nut',trips:'nut',over:'top',top:'top',weak:'weak',draw:'draw',wdraw:'draw',air:'air'};
 const CATORDER=['nut','set','two','trips','over','top','weak','draw','wdraw','air'];
 const NUTK=['nut','set','two','trips'];
-function classify(h,board){
+function classify(h,board){const r=classifyFlop(h,board);if(board.length===5&&(r.k==='draw'||r.k==='wdraw'))r.k='air';return r}
+function classifyFlop(h,board){
   const cat=evalCards(h.concat(board))>>20,f=drawFeats(h,board);
   const h0=h[0]>>2,h1=h[1]>>2,br=board.map(c=>c>>2),top=Math.max(...br),bs=new Set(br),pocket=h0===h1;
   let k;
@@ -511,7 +537,8 @@ function dealFlop(dead){for(;;){const d=shuffle([...Array(52).keys()].filter(c=>
 function cardHTML(c,sz=''){return `<div class="card ${sz} su${c&3}" aria-label="${R[c>>2]}${'shdc'[c&3]}"><span class="r">${R[c>>2]==='T'?'10':R[c>>2]}</span><span class="u">${SYM[c&3]}</span></div>`}
 function cardsHTML(cs,sz=''){return cs.map(c=>cardHTML(c,sz)).join('')}
 function cardTxt(c){return `<span class="su${c&3}">${R[c>>2]}${SYM[c&3]}</span>`}
-function gridHTML(colorFn,heroCls,extra=''){let s=`<div class="grid" ${extra}>`;for(const c of CLS){const col=colorFn(c)||'';s+=`<div class="gc ${col}${c===heroCls?' hero':''}" data-c="${c}">${c}</div>`}return s+'</div>'}
+const GCV={raise:'--raise',four:'--four',call:'--call',limp:'--limp',draw:'--draw',air:'--air','':'--fold'};
+function gridHTML(colorFn,heroCls,extra=''){let s=`<div class="grid" ${extra}>`;for(const c of CLS){let col=colorFn(c)||'',sty='';if(col.includes('|')){const[a,b]=col.split('|');sty=` style="background:linear-gradient(135deg,var(${GCV[a]||'--fold'}) 50%,var(${GCV[b]||'--fold'}) 50%);color:var(--on-color)"`;col='mix'}s+=`<div class="gc ${col}${c===heroCls?' hero':''}" data-c="${c}"${sty}>${c}</div>`}return s+'</div>'}
 function legendHTML(items){return `<div class="legend">${items.map(([c,l])=>`<span><i class="${c}"></i>${l}</span>`).join('')}</div>`}
 function chip(label,on,attr,val){return `<button class="chip ${on?'on':''}" data-${attr}="${val??label}">${label}</button>`}
 function seg(items,cur,attr){return `<div class="seg">${items.map(([id,l])=>`<button class="segb ${cur===id?'on':''}" data-${attr}="${id}">${l}</button>`).join('')}</div>`}
@@ -527,6 +554,48 @@ const Timer={raf:0,t0:0,cb:null,
     this.raf=requestAnimationFrame(tick)},
   stop(){if(this.raf)cancelAnimationFrame(this.raf);this.raf=0;this.cb=null;return performance.now()-this.t0}};
 
+// ================= daily warm-up =================
+const WU={active:false,queue:[],i:0,ok:0,t0:0,cur:null,saved:null};
+let WARMUPS=load('ll_warmups',[]);
+const WU_FILL=[{tab:'preflop',sub:'rfi'},{tab:'preflop',sub:'open'},{tab:'preflop',sub:'3bet'},{tab:'preflop',sub:'squeeze'},{tab:'preflop',sub:'play'},
+  {tab:'math',type:'odds'},{tab:'math',type:'mdf'},{tab:'math',type:'outs'},{tab:'math',type:'cf'},{tab:'postflop',mode:'bet'},{tab:'postflop',mode:'face'},{tab:'reading'}];
+function wuBuild(){
+  const leaks=Object.entries(STATS).filter(([k,v])=>k[0]!=='@'&&v.n>=3&&v.drill&&!k.startsWith('Ranges · Build')&&v.ok/v.n<.9)
+    .sort((a,b)=>a[1].ok/a[1].n-b[1].ok/b[1].n).slice(0,6);
+  const items=[];leaks.forEach(([k,v])=>{items.push({key:k,drill:v.drill},{key:k,drill:v.drill})});
+  let heavy=items.filter(x=>x.drill.tab==='postflop'||x.drill.tab==='reading').length;
+  while(items.length<20){const d=pick(WU_FILL);if((d.tab==='postflop'||d.tab==='reading')&&heavy>=4)continue;if(d.tab==='postflop'||d.tab==='reading')heavy++;items.push({drill:d})}
+  return shuffle(items).slice(0,20)}
+function wuStart(){
+  WU.saved={pf:{sub:pf.sub,pos:Object.fromEntries(Object.entries(pf.pos).map(([k,v])=>[k,new Set(v)])),vill:new Set(pf.vill),opener:new Set(pf.opener||[])},
+    mt:new Set(mt.types),pp:{mode:pp.mode,street:pp.street},rr:{mode:rr.mode,target:rr.target}};
+  Object.assign(WU,{active:true,queue:wuBuild(),i:0,ok:0,t0:Date.now(),missed:[]});wuItem()}
+function wuRestore(){const s=WU.saved;if(!s)return;pf.sub=s.pf.sub;pf.pos=s.pf.pos;pf.vill=s.pf.vill;pf.opener=s.pf.opener;mt.types=s.mt;pp.mode=s.pp.mode;pp.street=s.pp.street;rr.mode=s.rr.mode;rr.target=s.rr.target}
+function wuItem(){
+  wuRestore();const it=WU.queue[WU.i],d=it.drill;WU.cur={ok:true,answered:false,item:it};
+  if(d.tab==='preflop'){if(pf.table!==CFG.table)pfResetSeats();pf.sub=d.sub;if(d.pos)pf.pos[d.sub]=new Set([d.pos])}
+  if(d.tab==='math'&&d.type)mt.types=new Set([d.type]);
+  if(d.tab==='postflop'){pp.mode=d.mode||'bet';pp.street=d.street||'flop'}
+  if(d.tab==='reading'){rr.mode=d.mode||'read';if(d.target)rr.target=d.target}
+  wuBar();show(d.tab)}
+function wuNote(ok){if(!WU.active||!WU.cur)return;WU.cur.answered=true;if(!ok)WU.cur.ok=false}
+function wuNext(){
+  if(WU.cur){if(WU.cur.ok)WU.ok++;else WU.missed.push(WU.cur.item.key||'')}
+  WU.i++;if(WU.i>=WU.queue.length)return wuFinish();wuItem()}
+function wuBar(){const b=$('#wu-bar');if(!WU.active){b.hidden=true;return}b.hidden=false;
+  b.innerHTML=`<span>Warm-up ${Math.min(WU.i+1,WU.queue.length)}/${WU.queue.length}</span><span class="wu-track"><i style="width:${WU.i/WU.queue.length*100}%"></i></span><span>${WU.ok} ✓</span><button data-wu="stop">Stop</button>`}
+function wuFinish(stopped){
+  const n=stopped?WU.i:WU.queue.length,secs=Math.round((Date.now()-WU.t0)/1000);WU.active=false;wuRestore();wuBar();Timer.stop();
+  if(n>=5){WARMUPS.push({d:today(),ok:WU.ok,n,secs});WARMUPS=WARMUPS.slice(-60);save('ll_warmups',WARMUPS);Cloud.saveUser()}
+  const prev=WARMUPS.slice(-6,-1),avg=prev.length?prev.reduce((a,w)=>a+w.ok/w.n,0)/prev.length:null;
+  WU.last={ok:WU.ok,n,secs,avg,missed:[...new Set(WU.missed.filter(Boolean))]};show('stats')}
+function wuCardHTML(){
+  const last=WU.last,hist=WARMUPS.slice(-20);
+  return `<div class="wu-card"><h4 class="sh">Daily warm-up</h4>
+    ${last?`<p class="expl"><strong>${last.ok}/${last.n} right</strong> in ${Math.floor(last.secs/60)}:${String(last.secs%60).padStart(2,'0')}${last.avg!=null?` · your recent average is ${pct(last.avg)}`:''}.${last.missed.length?` Missed: ${last.missed.slice(0,4).map(k=>k.replace(/^\w+ · /,'')).join('; ')}.`:''}</p>`
+      :'<p class="note">20 timed questions across every tab, weighted toward your weakest spots. About 10 minutes. Good right before you play.</p>'}
+    ${hist.length?`<div class="wu-hist" role="img" aria-label="Recent warm-up scores">${hist.map(w=>`<i style="height:${Math.max(6,w.ok/w.n*100)}%" title="${w.d}: ${w.ok}/${w.n}"></i>`).join('')}</div><p class="note">Last ${hist.length} warm-ups, bar height is the score.</p>`:''}
+    <button class="next" data-wu="start">${last?'Start another warm-up':'Start daily warm-up'}</button></div>`}
 // ================= stats =================
 let STATS=load('ll_stats',{}),MISSES=load('ll_misses',[]),DAYS=load('ll_days',{});
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
@@ -545,7 +614,7 @@ const Sound={ctx:null,batch:null,
   note(ok){if(!this.batch){this.batch={ok:true};setTimeout(()=>{const b=this.batch;this.batch=null;this.play(b.ok,sess.streak)},25)}if(!ok)this.batch.ok=false}};
 document.addEventListener('pointerdown',()=>Sound.unlock(),{capture:true});document.addEventListener('keydown',()=>Sound.unlock(),{capture:true});
 function record(key,ok,ms,drill,miss,dims=[]){
-  Sound.note(ok);
+  Sound.note(ok);wuNote(ok);
   const s=STATS[key]||(STATS[key]={n:0,ok:0,ms:0,drill});s.n++;if(ok)s.ok++;s.ms+=Math.min(ms||0,120000);s.drill=drill;s.last=Date.now();
   const t=Date.now(),m=(!ok&&miss)?{t,k:key,m:miss}:null;
   if(m){MISSES.unshift(m);MISSES=MISSES.slice(0,40)}
@@ -615,12 +684,12 @@ const Cloud={on:false,user:null,db:null,state:'off',err:'',
       STATS={};st.forEach(d=>{const v=d.data();if(v.k)STATS[v.k]={n:v.n||0,ok:v.ok||0,ms:v.ms||0,drill:v.drill,last:v.last}});
       MISSES=[];ms.forEach(d=>MISSES.push(d.data()));
       const u=ud.data();
-      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);setTable();loadSolver();if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;if(u.missed){MISSED=u.missed;save('ll_missed',MISSED)}save('ll_cfg',CFG);save('ll_ranges',customRanges)}
+      if(u){if(u.cfg){const old=(u.cfg.v||1)<2;CFG=migrateCfg(u.cfg);setTable();loadSolver();if(old)this.saveUser()}if(u.ranges)customRanges=u.ranges;if(u.missed){MISSED=u.missed;save('ll_missed',MISSED)}if(u.warmups){WARMUPS=u.warmups;save('ll_warmups',WARMUPS)}save('ll_cfg',CFG);save('ll_ranges',customRanges)}
       else await this.saveUser();
       save('ll_stats',STATS);save('ll_misses',MISSES);this.state='synced';this.err='';
     }catch(e){this.state='error';this.err=e.message||String(e)}
     hud();if(cur==='stats'||cur==='charts'||(cur==='preflop'&&pf.table!==CFG.table))RENDER[cur]()},
-  saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges,missed:MISSED}).catch(e=>this.fail(e))},
+  saveUser(){if(!this.user)return Promise.resolve();return this.ref().set({cfg:CFG,ranges:customRanges,missed:MISSED,warmups:WARMUPS}).catch(e=>this.fail(e))},
   async resetStats(){
     if(!this.user)return;const r=this.ref();
     for(const col of['stats','misses','days']){const snap=await r.collection(col).get();const docs=snap.docs;
@@ -654,7 +723,7 @@ function call3bSet(opener,tb,ratio){
   if(deep()&&ip)s=union(s,rng('call3b.deepIP'));
   return minus(inter(s,rfiSet(opener)),fourBetSet(opener))}
 function villFlatSet(opener,v){
-  const s=v==='BB'?adjust(rng('bbdef.vs'+rk3(opener)),anteSteps()-rakeSteps()):adjust(v==='SB'?rng('flat.SBvsBTN'):rng('flat.vs'+rk3(opener)),-rakeSteps());
+  const s=v==='BB'?adjust(rng('bbdef.vs'+rk3(opener)),anteSteps()-rakeSteps()):adjust(v==='SB'?rng('flat.SBvsBTN'):rng('flat.vs'+rk3(opener)),-rakeSteps()-(v==='BTN'?0:1));
   return minus(s,rng('3bet_vs.'+rk3(opener)))}
 const deadBlinds=(a,b)=>(a!=='SB'&&b!=='SB'?.25:0)+(a!=='BB'&&b!=='BB'?.5:0);
 
@@ -665,7 +734,7 @@ function pfBuild(){
     POS.forEach(p=>q.seats[p]='');
     const foldBefore=p=>POS.slice(0,POS.indexOf(p)).forEach(x=>{if(!q.seats[x])q.seats[x]='Fold'});
     if(sub==='rfi'){
-      const set=rfiSet(H);q.ansFn=c=>set.has(c)?'Raise':'Fold';q.opts=['Raise','Fold'];foldBefore(H);
+      const set=rfiSet(H);q.ansFn=dec([['Raise',set]],'Fold');q.opts=['Raise','Fold'];foldBefore(H);
       q.prompt=`Folded to you in the <strong>${H}</strong>. Open to ${money(open)} or fold?`;
       q.key=`Preflop · RFI · ${H}`;q.tag='Raise first in';
       q.expl.push(`${H} opens ${pct(setCombos(set)/1326)} of hands (${setCombos(set)} combos).`);
@@ -675,7 +744,7 @@ function pfBuild(){
     }else if(sub==='3bet'){
       const vills=after(H).filter(v=>pf.vill.has(v));if(!vills.length)continue;const V=pick(vills);
       const T=threeBetSize(H,V),ratio=T/open,four=fourBetSet(H),call=call3bSet(H,V,ratio),rfi=rfiSet(H);
-      q.ansFn=c=>!rfi.has(c)?null:four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';
+      {const f=dec([['4-Bet',four],['Call',call]],'Fold');q.ansFn=c=>!rfi.has(c)?null:f(c);q.ansFn.alt=c=>rfi.has(c)?f.alt(c):null}
       q.pool=[...rfi];q.opts=['4-Bet','Call','Fold'];foldBefore(H);
       q.seats[H]='Open '+money(open);after(H).forEach(p=>q.seats[p]=p===V?'3-Bet '+money(T):(POS.indexOf(p)<POS.indexOf(V)?'Fold':''));
       const dead=deadBlinds(H,V)+anteTotal(),toCall=T-open,final=2*T+dead,need=needEq(toCall,final),ip=isIP(H,V);
@@ -689,7 +758,7 @@ function pfBuild(){
     }else if(sub==='open'){
       const ops=POS.slice(0,POS.indexOf(H)).filter(p=>pf.opener.has(p));if(!ops.length)continue;const O=pick(ops);open=openFor(O);
       const tb=rng('3bet_vs.'+rk3(O)),call=H==='BB'?villFlatSet(O,'BB'):H==='SB'?(O==='BTN'?villFlatSet('BTN','SB'):new Set()):villFlatSet(O,H);
-      q.ansFn=c=>tb.has(c)?'3-Bet':call.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
+      q.ansFn=dec([['3-Bet',tb],['Call',call]],'Fold');q.opts=['3-Bet','Call','Fold'];
       foldBefore(O);q.seats[O]='Open '+money(open);POS.slice(POS.indexOf(O)+1,POS.indexOf(H)).forEach(p=>q.seats[p]='Fold');
       const posted=H==='SB'?.25:H==='BB'?.5:0,toCall=open-posted,T=tbStd(O,H),dead=deadBlinds(O,H)+anteTotal(),final=2*open+dead,need=needEq(toCall,final),ip=isIP(H,O);
       q.pot=open+dead+posted;q.toCall=toCall;
@@ -708,7 +777,7 @@ function pfBuild(){
       else if(H==='SB'){iso=rng('iso.SB');lp=rng('limp.SB');q.opts=['Raise','Complete','Fold']}
       else if(H!=='CO'&&H!=='BTN'){iso=rng('iso.MP');lp=rng('limp.MP');q.opts=['Raise','Limp','Fold']}
       else{iso=rng(n>=2?'iso.LP2':'iso.LP1');lp=rng(n>=2?'limp.LP2':'limp.LP1');q.opts=['Raise','Limp','Fold']}
-      q.ansFn=c=>iso.has(c)?'Raise':H==='BB'?'Check':lp.has(c)?(H==='SB'?'Complete':'Limp'):'Fold';
+      q.ansFn=dec([['Raise',iso],[H==='SB'?'Complete':'Limp',H==='BB'?null:lp]],H==='BB'?'Check':'Fold');
       L.forEach(p=>q.seats[p]='Limp');foldBefore(H);
       const oop=H==='SB'||H==='BB',size=2+.5*n+(oop?.5:0);
       q.pot=blindsPot()+.5*n;q.toCall=H==='BB'?0:H==='SB'?.25:.5;
@@ -721,7 +790,7 @@ function pfBuild(){
       const hi=POS.indexOf(H);if(hi<2)continue;const before=POS.slice(0,hi);
       const oi=rnd(before.length-1),ci=oi+1+rnd(before.length-1-oi),O=before[oi],C=before[ci];open=openFor(O);
       const sq=rng(EP(O)?'squeeze.vsEP':'squeeze.vsLP'),cl=rng(H==='BB'?'sqcall.BB':H==='SB'?'sqcall.SB':'sqcall.IP');
-      q.ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';q.opts=['3-Bet','Call','Fold'];
+      q.ansFn=dec([['3-Bet',sq],['Call',cl]],'Fold');q.opts=['3-Bet','Call','Fold'];
       foldBefore(H);q.seats[O]='Open '+money(open);q.seats[C]='Call';
       const oop=H==='SB'||H==='BB',size=open*(4+(oop?1:0));
       q.pot=blindsPot()+2*open;q.toCall=open-(H==='SB'?.25:H==='BB'?.5:0);
@@ -782,15 +851,15 @@ function poSit(st,p){if(st.raises===0)return'rfi';if(st.raises===1)return st.cal
 // The chart answer for seat p right now, plus everything needed to grade, size and explain it.
 function poDecide(st,p){
   const sit=poSit(st,p),r=poR(),O=st.opener,oop=p==='SB'||p==='BB';let ansFn,opts,size=0,key,desc,legend;
-  if(sit==='rfi'){const s=rfiSet(p);ansFn=c=>s.has(c)?'Raise':'Fold';opts=['Raise','Fold'];size=openFor(p);key=`Preflop · RFI · ${p}`;desc='Folded to you';legend=[['raise','Open'],['','Fold']]}
+  if(sit==='rfi'){const s=rfiSet(p);ansFn=dec([['Raise',s]],'Fold');opts=['Raise','Fold'];size=openFor(p);key=`Preflop · RFI · ${p}`;desc='Folded to you';legend=[['raise','Open'],['','Fold']]}
   else if(sit==='open'){const tb=rng('3bet_vs.'+rk3(O)),call=p==='BB'?villFlatSet(O,'BB'):p==='SB'?(O==='BTN'?villFlatSet('BTN','SB'):new Set()):villFlatSet(O,p);
-    ansFn=c=>tb.has(c)?'3-Bet':call.has(c)?'Call':'Fold';opts=['3-Bet','Call','Fold'];size=CFG.sizing==='custom'?threeBetSize(O,p):tbStd(O,p);
+    ansFn=dec([['3-Bet',tb],['Call',call]],'Fold');opts=['3-Bet','Call','Fold'];size=CFG.sizing==='custom'?threeBetSize(O,p):tbStd(O,p);
     key=`Preflop · vs open · ${p} vs ${O}`;desc=`${O} opens to ${money(st.openAmt)}`;legend=[['four','3-Bet'],['call','Call'],['','Fold']]}
   else if(sit==='squeeze'){const sq=rng(EP(O)?'squeeze.vsEP':'squeeze.vsLP'),cl=rng(p==='BB'?'sqcall.BB':p==='SB'?'sqcall.SB':'sqcall.IP');
-    ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';opts=['3-Bet','Call','Fold'];size=r25(st.openAmt*(3+st.callers.length+(oop?1:0)));
+    ansFn=dec([['3-Bet',sq],['Call',cl]],'Fold');opts=['3-Bet','Call','Fold'];size=r25(st.openAmt*(3+st.callers.length+(oop?1:0)));
     key=`Preflop · Squeeze · ${p}`;desc=`${O} opens to ${money(st.openAmt)}, ${st.callers.join(' and ')} call${st.callers.length>1?'':'s'}`;legend=[['four','Squeeze'],['call','Call'],['','Fold']]}
   else if(sit==='vs3'){const four=fourBetSet(p),call=call3bSet(p,st.tb,st.cur/st.openAmt);
-    ansFn=c=>four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
+    ansFn=dec([['4-Bet',four],['Call',call]],'Fold');opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
     key=`Preflop · vs 3-bet · ${p} vs ${st.tb}`;desc=`${st.tb} 3-bets to ${money(st.cur)}`;legend=[['four','4-Bet'],['call','Call'],['','Fold']]}
   else if(sit==='flat3'){const four=rng('4bet.EP');ansFn=c=>four.has(c)?'4-Bet':r.flat3.has(c)?'Call':'Fold';opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
     key=`Preflop · Flat, then 3-bet · ${p}`;desc=`You called; ${st.tb} 3-bets to ${money(st.cur)}`;legend=[['four','4-Bet'],['call','Call'],['','Fold']]}
@@ -801,9 +870,9 @@ function poDecide(st,p){
   else if(sit==='vs5'){ansFn=c=>r.call5.has(c)?'Call':'Fold';opts=['Call','Fold'];key=`Preflop · vs 5-bet jam · ${p}`;desc='All-in over your 4-bet';legend=[['call','Call'],['','Fold']]}
   else{ansFn=c=>r.aakk.has(c)?'All-in':'Fold';opts=['All-in','Call','Fold'];size=stackUsd();key=`Preflop · Cold vs 4-bet+ · ${p}`;desc=`Facing a raise to ${money(st.cur)}`;legend=[['four','Continue'],['','Fold']]}
   let fn=ansFn;
-  if(st.cur>=stackUsd()){fn=c=>ansFn(c)==='Fold'?'Fold':'Call';opts=['Call','Fold'];legend=[['call','Call'],['','Fold']]}   // facing a shove: only call or fold
+  if(st.cur>=stackUsd()){fn=c=>ansFn(c)==='Fold'?'Fold':'Call';fn.alt=c=>{const b=ansFn.alt&&ansFn.alt(c);if(!b)return null;const x=b==='Fold'?'Fold':'Call';return x===fn(c)?null:x};opts=['Call','Fold'];legend=[['call','Call'],['','Fold']]}   // facing a shove: only call or fold
   if(size>stackUsd()*.45)size=stackUsd();
-  const cls=comboCls(...st.hands[p]),ans=fn(cls),ok=[ans];
+  const cls=comboCls(...st.hands[p]),ans=fn(cls),ok=okList(fn,cls);
   if(!deep()&&sit==='vs4'&&cls==='QQ'&&st.cur<stackUsd())ok.push(ans==='All-in'?'Call':'All-in');
   return{sit,ansFn:fn,opts,ans,ok,size,key:key+(is9()?' (9-max)':''),desc,legend,cls,toCall:Math.max(0,Math.min(st.cur,stackUsd())-st.c[p])}}
 function poApply(st,p,act,size){
@@ -832,7 +901,7 @@ function poHero(act){
   poApply(st,st.H,choice,d.size);if(choice==='Fold')st.heroOut=true;
   poRun(st)}
 function poEnd(st){
-  Timer.stop();st.done=true;st.turn=null;st.pending=null;
+  Timer.stop();if(WU.active&&!st.dec.length){setTimeout(()=>{if(po.st===st)poNew()},500);return}st.done=true;st.turn=null;st.pending=null;
   const inH=[...st.in],others=inH.filter(p=>p!==st.H),pot=poPot(st);
   if(!st.in.has(st.H))st.result=inH.length===1?`You folded. ${inH[0]} takes the pot.`:`You folded. ${others.join(' and ')} go to the flop.`;
   else if(inH.length===1)st.result=`Everyone folds. You win ${money(pot)}.`;
@@ -844,7 +913,7 @@ function poEnd(st){
   const right=st.dec.filter(d=>d.right).length;
   if(st.dec.length)st.result+=` ${right}/${st.dec.length} decision${st.dec.length>1?'s':''} matched the chart.`;
   poRender(st,false);
-  if(!st.dec.length||(CFG.autoNext&&right===st.dec.length&&!st.in.has(st.H)&&!st.board)){const s=st;setTimeout(()=>{if(po.st===s&&!$('#v-preflop').hidden&&pf.sub==='play')poNew()},st.dec.length?1000:700)}}
+  if(!WU.active&&(!st.dec.length)||(!WU.active&&CFG.autoNext&&right===st.dec.length&&!st.in.has(st.H)&&!st.board)){const s=st;setTimeout(()=>{if(po.st===s&&!$('#v-preflop').hidden&&pf.sub==='play')poNew()},st.dec.length?1000:700)}}
 function poRender(st,heroTurn){
   const el=$('#pf-spot');if(!el)return;let d=null;if(heroTurn){d=poDecide(st,st.H);st.pending=d}
   const pot=poPot(st),short=a=>POS.length>6&&a?a.replace(/ \$[\d.]+$/,''):a;
@@ -860,7 +929,7 @@ function poRender(st,heroTurn){
     ${st.done?'<button class="next" data-next="po">Next hand ↵</button>':''}`;
   if(heroTurn)Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>poHero(null))}
 function poChart(i){const x=po.st&&po.st.dec[i],el=$('#po-c'+i);if(!x||!el)return;
-  if(el.hidden)el.innerHTML=gridHTML(c=>COLOR[x.ansFn(c)]||'',x.cls)+legendHTML(x.legend);el.hidden=!el.hidden}
+  if(el.hidden)el.innerHTML=gridHTML(c=>{const a=x.ansFn(c);if(a==null)return'na';const b=x.ansFn.alt&&x.ansFn.alt(c);return b?`${COLOR[a]||''}|${COLOR[b]||''}`:COLOR[a]},x.cls)+legendHTML(x.legend.concat([['mix','Split = 50% mix']]));el.hidden=!el.hidden}
 function renderPF(){
   if(pf.table!==CFG.table)pfResetSeats();
   $('#v-preflop').innerHTML=`
@@ -878,7 +947,10 @@ function pfNext(){
   if(pf.sub==='play')return poNew();
   const el=$('#pf-spot');const q=pfBuild();
   if(!q){Timer.stop();el.innerHTML='<p class="empty">No spot matches these filters. Turn on at least one seat (for 3-bets, a 3-bettor who acts after you).</p>';return}
-  const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);pf.q=q;
+  const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);q.ok=okList(q.ansFn,h.cls);pf.q=q;
+  if(CFG.exploit&&q.sub==='3bet'){const c=h.cls;
+    if(q.ans==='Call'&&((/o$/.test(c)&&!['AKo','AQo'].includes(c))||q.ok.length>1)){q.ok=[...new Set([...q.ok,'Fold'])];q.exploitNote='Exploit: NL50 3-bets are value-heavy, so folding the bottom of this calling range is fine.'}
+    if(q.ans==='4-Bet'&&!/^(AA|KK|QQ|AK)/.test(c)){q.ok=[...new Set([...q.ok,'Call','Fold'].filter(o=>o==='4-Bet'||o==='Fold'||q.ok.includes(o)))];q.exploitNote='Exploit: NL50 players rarely fold to 4-bets, so 4-bet bluffs are optional; folding is fine.'}}
   el.innerHTML=`${timerHTML()}
     <div class="shead"><span class="tag">${q.tag}${q.retry?' <span class="pill b">Missed before</span>':''}</span><span class="pot">Pot ${money(q.pot)}${q.toCall?` · to call ${money(q.toCall)}`:''}</span></div>
     <div class="seats n${POS.length}" style="--n:${POS.length}">${POS.map(p=>{const a=q.seats[p];return `<div class="seat ${p===q.H?'me':''} ${a==='Fold'?'folded':a?'act':''}"><b>${p}</b><span>${p===q.H?(a?(POS.length>6?a.replace(/ \$[\d.]+$/,''):a):'You'):((POS.length>6&&a?a.replace(/ \$[\d.]+$/,''):a)||(POS.indexOf(p)>POS.indexOf(q.H)?'·':''))}</span></div>`}).join('')}</div>
@@ -888,17 +960,17 @@ function pfNext(){
     <div class="fb" id="pf-fb" hidden></div>`;
   Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>pfAnswer(null))}
 function pfAnswer(choice){
-  const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=choice===q.ans;noteMiss(q.key,q.cls,ok);
+  const q=pf.q;if(!q||q.done)return;q.done=true;const ms=Timer.stop();const ok=q.ok.includes(choice);noteMiss(q.key,q.cls,ok);
   record(q.key,ok,ms,{tab:'preflop',sub:q.sub,pos:q.H,table:CFG.table},`${q.cls} · ${q.key.replace('Preflop · ','')}: you ${choice||'timed out'}, answer ${q.ans}`,['seat:'+q.H]);
   const acts=$('#pf-spot .acts');acts.classList.add('done');
-  acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(b.dataset.pfans===q.ans)b.classList.add('right')});
+  acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.pfans===choice)b.classList.add('picked');if(q.ok.includes(b.dataset.pfans))b.classList.add('right')});
   const fb=$('#pf-fb');fb.hidden=false;
-  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${q.cls} → ${q.ans} · ${(ms/1000).toFixed(1)}s</small></div>
-    ${q.expl.map(e=>`<p class="expl">${e}</p>`).join('')}
-    ${gridHTML(c=>{const a=q.ansFn(c);return a==null?'na':COLOR[a]},q.cls)}
-    ${legendHTML(q.legend)}
+  fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${q.cls} → ${q.ok.join(' or ')}${q.ok.length>1?' (mixed 50/50)':''} · ${(ms/1000).toFixed(1)}s</small></div>
+    ${q.expl.map(e=>`<p class="expl">${e}</p>`).join('')}${q.exploitNote?`<p class="expl"><span class="pill b">Exploit</span> ${q.exploitNote}</p>`:''}
+    ${gridHTML(c=>{const a=q.ansFn(c);if(a==null)return'na';const b=q.ansFn.alt&&q.ansFn.alt(c);return b?`${COLOR[a]||''}|${COLOR[b]||''}`:COLOR[a]},q.cls)}
+    ${legendHTML(q.legend.concat([['mix','Split = 50% mix, either is right']]))}
     <button class="next" data-next="pf">Next hand ↵</button>`;
-  if(ok&&CFG.autoNext)q.auto=setTimeout(()=>{if(pf.q===q&&!$('#v-preflop').hidden)pfNext()},1100)}
+  if(ok&&CFG.autoNext&&!WU.active)q.auto=setTimeout(()=>{if(pf.q===q&&!$('#v-preflop').hidden)pfNext()},1100)}
 
 // ================= scenarios (shared) =================
 const SCEN={srp_pfr:{l:'You opened, got called',pfr:true},srp_call:{l:'You called an open',pfr:false},tbp_call:{l:'You called a 3-bet',pfr:false},tbp_pfr:{l:'You 3-bet, got called',pfr:true},iso:{l:'Iso vs limper',pfr:true}};
@@ -997,7 +1069,7 @@ function rrNext(){
 function rrHeader(s){
   return `<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · pot ${money(s.sc.pot)}</span>${dots(s.qs.length,s.qi,s.res)}</div>
   <p class="prompt">${s.sc.desc} ${s.act!=='none'?`<strong>${FLOPACT[s.act].t}</strong>`:''}</p>
-  <div class="boardwrap"><div><div class="lbl">You · ${s.sc.H}</div><div class="board">${cardsHTML(s.hero.cards,'sm')}</div></div><div><div class="lbl">Flop</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div>`}
+  <div class="boardwrap"><div><div class="lbl">You · ${s.sc.H}</div><div class="board">${cardsHTML(s.hero.cards,'sm')}</div></div><div><div class="lbl">${s.board.length===3?'Flop':s.board.length===4?'Turn':'River'}</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div>`}
 function rrShowQ(){
   const s=rr.spot,q=s.qs[s.qi],el=$('#rr-spot');
   el.innerHTML=`${timerHTML()}${rrHeader(s)}
@@ -1062,13 +1134,13 @@ function bindPaint(){
 window.addEventListener('pointerup',()=>painting=false);window.addEventListener('pointercancel',()=>painting=false);
 function rbSubmit(){
   const b=rr.build;if(!b||b.done)return;b.done=true;const ms=Timer.stop();
-  let tp=0,fp=0,fn=0;CLS.forEach(c=>{const a=b.sel.has(c),t=b.target.has(c),n=nCombos(c);if(a&&t)tp+=n;else if(a)fp+=n;else if(t)fn+=n});
+  let tp=0,fp=0,fn=0;CLS.forEach(c=>{if(HF(b.target).has(c))return;const a=b.sel.has(c),t=b.target.has(c),n=nCombos(c);if(a&&t)tp+=n;else if(a)fp+=n;else if(t)fn+=n});
   const score=tp/Math.max(1,tp+fp+fn),ok=score>=.75;
   record(`Ranges · Build · ${b.d}`,ok,ms,{tab:'reading',mode:'build',target:String(b.i)},`Built “${b.d}” at ${pct(score)} overlap`);
-  $('#rb-grid').innerHTML=gridHTML(c=>{const a=b.sel.has(c),t=b.target.has(c);return a&&t?'call':a?'extra':t?'miss':''},null);
+  $('#rb-grid').innerHTML=gridHTML(c=>{const a=b.sel.has(c),t=b.target.has(c);return HF(b.target).has(c)?(a?'call|':'|call'):a&&t?'call':a?'extra':t?'miss':''},null);
   const fb=$('#rb-fb');fb.hidden=false;
   fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${pct(score)} match<small>${setCombos(b.target)} combos (${pct(setCombos(b.target)/1326)}) in the reference range</small></div>
-  ${legendHTML([['call','Correct'],['extra','Too loose'],['miss','Missed']])}
+  ${legendHTML([['call','Correct'],['extra','Too loose'],['miss','Missed'],['mix','50% hand, either is fine']])}
   <p class="note">Missed: ${CLS.filter(c=>b.target.has(c)&&!b.sel.has(c)).join(', ')||'none'}<br>Extra: ${CLS.filter(c=>!b.target.has(c)&&b.sel.has(c)).join(', ')||'none'}</p>
   <button class="next" data-next="rb">Next range ↵</button>`}
 
@@ -1151,11 +1223,11 @@ function mtAnswer(choice){
   acts.querySelectorAll('.act').forEach(b=>{b.disabled=true;if(b.dataset.mtans===choice)b.classList.add('picked');if(b.dataset.mtans===q.ans)b.classList.add('right')});
   const fb=$('#mt-fb');fb.hidden=false;
   fb.innerHTML=`<div class="verdict ${ok?'good':'bad'}">${ok?'Correct':choice?'Wrong':'Time'}<small>${q.ans} · ${(ms/1000).toFixed(1)}s</small></div><p class="expl">${q.expl}</p><button class="next" data-next="mt">Next ↵</button>`;
-  if(ok&&CFG.autoNext)q.auto=setTimeout(()=>{if(mt.q===q&&!$('#v-math').hidden)mtNext()},1400)}
+  if(ok&&CFG.autoNext&&!WU.active)q.auto=setTimeout(()=>{if(mt.q===q&&!$('#v-math').hidden)mtNext()},1400)}
 
 // ================= postflop =================
-const PP_MODES=[['bet','Bet or check'],['face','Facing a bet'],['block','Pick the bluff']];
-const pp={mode:'bet',pots:new Set(['srp','tbp','iso']),spot:null};
+const PP_MODES=[['bet','Bet or check'],['face','Facing a bet'],['size','Bet sizing'],['block','Pick the bluff']];
+const pp={mode:'bet',street:'flop',pots:new Set(['srp','tbp','iso']),spot:null};
 function pickHands(r,n){
   const g={};r.forEach(x=>(g[x.k]??=[]).push(x));const keys=shuffle(Object.keys(g)),o=[],used=new Set();
   for(let i=0;o.length<n&&i<80;i++){const x=pick(g[keys[i%keys.length]]);if(used.has(x.cls))continue;used.add(x.cls);o.push(x)}
@@ -1186,50 +1258,85 @@ loadSolver();
 const SOLVER_POTS={srp:['BTN_BB','CO_BB','UTG_BB','SB_BB'],tbp:['BB3_BTN','BTN3_CO']};
 const cardOf=s=>R.indexOf(s[0])*4+'shdc'.indexOf(s[1]);
 function unpack(n){const w=4+n.a.length,m=[];for(let i=0;i+w<=n.s.length;i+=w)m.push({key:n.s.slice(i,i+4),q:[...n.s.slice(i+4,i+w)].map(Number)});return m}
-function actLabel(a,potChips){const[k,v]=a.split(' ');if(k==='CHECK')return'Check';if(k==='CALL')return'Call';if(k==='FOLD')return'Fold';
-  if(k==='RAISE'||(k==='ALLIN'&&pp.mode==='face'))return'Raise';if(k==='ALLIN')return'All-in';return`Bet ${Math.round(parseFloat(v)/potChips*100)}%`}
+function actLabel(a,potChips,stackChips){const[k,v]=a.split(' ');if(k==='CHECK')return'Check';if(k==='CALL')return'Call';if(k==='FOLD')return'Fold';
+  if(k==='RAISE'||(k==='ALLIN'&&pp.mode==='face'))return'Raise';if(k==='ALLIN')return'All-in';
+  const amt=parseFloat(v);if(stackChips&&amt>=stackChips*.95)return'All-in';let p=Math.round(amt/potChips*100);for(const s of[25,33,50,66,75,100,125,150])if(Math.abs(p-s)<=2)p=s;return`Bet ${p}%`}
+const STREETS=[['flop','Flop'],['turn','Turn'],['river','River']];
+// Exploit mode: how NL50 players deviate, and what that changes.
+const EXPLOIT_NOTE={fold:'Exploit: NL50 players rarely bluff big turn and river bets, so this bluff-catcher folds against the pool.',
+  giveup:'Exploit: NL50 players call too often, so this river bluff loses money. Give up.',
+  thin:'Exploit: NL50 players call down with worse, so bet this hand for thin value.'};
 function ppGenSolver(){
-  const keys=[...pp.pots].flatMap(p=>SOLVER_POTS[p]||[]),boards=Object.keys(SOLVER.boards).filter(b=>keys.includes(b.split('|')[0]));
+  const street=pp.street,keys=[...pp.pots].flatMap(p=>SOLVER_POTS[p]||[]);
+  const boards=Object.keys(SOLVER.boards).filter(k=>{if(!keys.includes(k.split('|')[0]))return false;const t=SOLVER.boards[k].turns;
+    return street==='flop'||(t&&t.some(x=>street==='turn'||x.river))});
   if(!boards.length)return null;
-  const bk=pick(boards),[spot,flop]=bk.split('|'),sp=SOLVER.spots[spot],bd=SOLVER.boards[bk],board=flop.match(/../g).map(cardOf);
-  const usd=bb=>bb*.5,pot=usd(sp.potBB),tbp=sp.pot==='tbp';
+  const bk=pick(boards),[spot,flop]=bk.split('|'),sp=SOLVER.spots[spot],bd=SOLVER.boards[bk];
+  const usd=bb=>bb*.5,ch=c=>usd(c/10),tbp=sp.pot==='tbp';
   const pfrPos=tbp?sp.threeBettor:sp.opener,callPos=tbp?sp.opener:sp.caller,ipPos=sp.pfr==='ip'?pfrPos:callPos;
-  const heroPFR=pp.mode==='bet',H=heroPFR?pfrPos:callPos,V=heroPFR?callPos:pfrPos;
-  const desc=tbp?(heroPFR?`<strong>${V}</strong> opens to ${money(usd(sp.open))}, you 3-bet to ${money(usd(sp.threeBet))} from the <strong>${H}</strong>, ${V} calls.`
+  const heroPFR=pp.mode!=='face',H=heroPFR?pfrPos:callPos,V=heroPFR?callPos:pfrPos;
+  const who=(p,verb)=>p===H?`you ${verb}`:`${p} ${verb}s`;
+  let desc=tbp?(heroPFR?`<strong>${V}</strong> opens to ${money(usd(sp.open))}, you 3-bet to ${money(usd(sp.threeBet))} from the <strong>${H}</strong>, ${V} calls.`
       :`You open <strong>${H}</strong> to ${money(usd(sp.open))}, <strong>${V}</strong> 3-bets to ${money(usd(sp.threeBet))}, you call.`)
     :(heroPFR?`You open <strong>${H}</strong> to ${money(usd(sp.open))}, <strong>${V}</strong> calls.`:`<strong>${V}</strong> opens to ${money(usd(sp.open))}, you call in the <strong>${H}</strong>.`);
+  // walk to the chosen street: flop node, or turn/river node after "raiser bets, caller calls"
+  let nodeP=bd.cbet,nodeV=bd.vs,potChips=sp.potChips,stackChips=bd.stackChips||Math.round((sp.stackBB||CFG.stackBB)*10),cards=flop;
+  if(street!=='flop'){
+    const t=pick(bd.turns.filter(x=>street==='turn'||x.river));
+    desc+=` Flop: ${who(pfrPos,'c-bet')} ${money(ch(parseFloat(t.line.split(' ')[1])))}, ${who(callPos,'call')}.`;
+    cards+=t.c;nodeP=t.pfr;nodeV=t.vs;potChips=t.potChips;stackChips=t.stackChips;if(street==='turn')desc+=` Turn ${cardTxt(cardOf(t.c))}.`;
+    if(street==='river'){const r=t.river;desc+=` Turn ${cardTxt(cardOf(t.c))}: ${who(pfrPos,'bet')} ${money(ch(parseFloat(r.line.split(' ')[1])))}, ${who(callPos,'call')}. River ${cardTxt(cardOf(r.c))}.`;
+      cards+=r.c;nodeP=r.pfr;nodeV=r.vs;potChips=r.potChips;stackChips=r.stackChips}}
+  const board=cards.match(/../g).map(cardOf),pot=ch(potChips);
   const sc={type:tbp?(heroPFR?'tbp_pfr':'tbp_call'):(heroPFR?'srp_pfr':'srp_call'),H,V,pot,desc,heroIP:H===ipPos};
   const toCards=k=>[cardOf(k.slice(0,2)),cardOf(k.slice(2))];
-  const toRows=n=>{const labels=[...new Set(n.a.map(a=>actLabel(a,sp.potChips)))];
-    return{labels,rows:unpack(n).map(r=>{const cards=toCards(r.key),c=classify(cards,board),q={};
-      n.a.forEach((a,i)=>{const l=actLabel(a,sp.potChips);q[l]=Math.min(4,(q[l]||0)+r.q[i])});return{cards,cls:comboCls(cards[0],cards[1]),k:c.k,f:c.f,q}})}};
+  const toRows=n=>{const labels=[...new Set(n.a.map(a=>actLabel(a,potChips,stackChips)))];
+    return{labels,rows:unpack(n).map(r=>{const cs=toCards(r.key),c=classify(cs,board),q={};
+      n.a.forEach((a,i)=>{const l=actLabel(a,potChips,stackChips);q[l]=Math.min(4,(q[l]||0)+r.q[i])});return{cards:cs,cls:comboCls(cs[0],cs[1]),k:c.k,f:c.f,q}})}};
+  const solverLine=q=>'Solver: '+Object.entries(q).sort((a,b)=>b[1]-a[1]).filter(e=>e[1]>0).map(e=>`${e[0]} (${e[1]*25}%)`).join(' · ')+'.';
   const decide=x=>{const ent=Object.entries(x.q).sort((a,b)=>b[1]-a[1]);let ok=ent.filter(e=>e[1]>=1).map(e=>e[0]);if(!ok.length)ok=[ent[0][0]];
-    return{ans:ent[0][0],ok,why:'Solver: '+ent.filter(e=>e[1]>0).map(e=>`${e[0]} (${e[1]*25}%)`).join(' · ')+'.'}};
-  const foot=`<p class="note">Solved with ${SOLVER.meta.solver}: ${SOLVER.meta.stackBB}bb, no rake, the app's default charts, $1.25/$1.50 opens. Frequencies are rounded to 25%; any play the solver uses 25%+ of the time counts as correct.</p>`;
-  if(pp.mode==='bet'){
-    const{labels,rows}=toRows(bd.cbet),hands=pickHands(rows,5);hands.forEach(x=>x.d=decide(x));
-    const vsKey=Object.keys(bd.vs)[0],villR=vsKey?unpack(bd.vs[vsKey]).map(r=>({cards:toCards(r.key)})):[];
-    hands.forEach(x=>{if(!villR.length||!x.d.ans.startsWith('Bet'))return;const eq=mcEquity(x.cards,board,villR,400);
-      x.d.why+=eq>=.5?` A value bet (${pct(eq)} vs their range).`:` A bluff or semi-bluff (${pct(eq)} vs their range).`});
-    const freq=labels.map(l=>[l,rows.reduce((s,r)=>s+(r.q[l]||0),0)/(4*rows.length)]);
-    const sizes=bd.cbet.a.filter(a=>a.startsWith('BET')).map(a=>`${actLabel(a,sp.potChips).slice(4)} (${money(usd(parseFloat(a.split(' ')[1])/10))})`).join(' or ');
-    return{mode:'bet',solver:true,sc,board,hands,tags:[],opts:labels,
-      line:`${sc.heroIP?'Villain checks to you.':'You act first.'} Tag each hand with the solver's main play: check, or bet ${sizes}.`,
-      summary:`<h4 class="sh">Solver's whole-range c-bet strategy</h4><div class="bars">${freq.map(([l,f])=>`<div class="bar"><span>${l}</span><span class="t"><i class="${l==='Check'?'air':'top'}" style="width:${Math.max(2,f*100)}%"></i></span><span class="n">${pct(f)}</span></div>`).join('')}</div>${foot}`}}
-  // Facing a c-bet: pick the size in proportion to how often the raiser uses it.
-  const cb=unpack(bd.cbet),bets=bd.cbet.a.map((a,i)=>[a,cb.reduce((s,r)=>s+r.q[i],0)]).filter(([a,w])=>a.startsWith('BET')&&w>0&&bd.vs[a]);
+    return{ans:ent[0][0],ok,why:solverLine(x.q)}};
+  const foot=`<p class="note">Solved with ${SOLVER.meta.solver}: ${SOLVER.meta.stackBB}bb, no rake, the app's default charts, $1.25/$1.50 opens.${street!=='flop'?' Turn and river ranges are the hands that took this line.':''} Frequencies are rounded to 25%; any play the solver uses 25%+ of the time counts as correct.${CFG.exploit?' Exploit mode is on: some answers follow NL50 tendencies instead (marked).':''}</p>`;
+  const villR=Object.keys(nodeV).length?unpack(nodeV[Object.keys(nodeV)[0]]).map(r=>({cards:toCards(r.key)})):[];
+  const bars=(title,rows,labels)=>`<h4 class="sh">${title}</h4><div class="bars">${labels.map(l=>[l,rows.reduce((s,r)=>s+(r.q[l]||0),0)/(4*rows.length)]).map(([l,f])=>`<div class="bar"><span>${l}</span><span class="t"><i class="${l==='Check'?'air':'top'}" style="width:${Math.max(2,f*100)}%"></i></span><span class="n">${pct(f)}</span></div>`).join('')}</div>`;
+  const sizes=nodeP.a.filter(a=>a.startsWith('BET')||a==='ALLIN').map(a=>{const l=actLabel(a,potChips,stackChips);return l==='All-in'?'all-in':`${l.slice(4)} (${money(ch(parseFloat(a.split(' ')[1])))})`}).join(' or ');
+  const S=STREETS.find(s=>s[0]===street)[1];
+  if(pp.mode==='bet'||pp.mode==='size'){
+    let{labels,rows}=toRows(nodeP);
+    if(pp.mode==='size'){rows=rows.filter(r=>labels.reduce((s,l)=>s+(l==='Check'?0:(r.q[l]||0)),0)>=2);if(rows.length<5)return null}
+    const hands=pickHands(rows,5);
+    hands.forEach(x=>{x.eq=villR.length?mcEquity(x.cards,board,villR,400):null;
+      if(pp.mode==='size'){const bets=Object.entries(x.q).filter(e=>e[0]!=='Check').sort((a,b)=>b[1]-a[1]);let ok=bets.filter(e=>e[1]>=1).map(e=>e[0]);if(!ok.length)ok=[bets[0][0]];
+        x.d={ans:bets[0][0],ok,why:solverLine(x.q)};return}
+      x.d=decide(x);
+      if(CFG.exploit&&street==='river'&&x.eq!=null){
+        if(x.d.ans.startsWith('Bet')&&x.eq<.35)x.d={ans:'Check',ok:['Check'],why:x.d.why+' '+EXPLOIT_NOTE.giveup,exploit:true};
+        else if(x.d.ans==='Check'&&x.eq>=.55&&x.eq<.8){const b=labels.find(l=>l.startsWith('Bet'));if(b)x.d={ans:b,ok:[b],why:x.d.why+' '+EXPLOIT_NOTE.thin,exploit:true}}}
+      if(x.d.ans.startsWith('Bet')||x.d.ans==='All-in')x.d.why+=x.eq==null?'':x.eq>=.5?` A value bet (${pct(x.eq)} vs their range).`:` A bluff or semi-bluff (${pct(x.eq)} vs their range).`});
+    const opts=pp.mode==='size'?labels.filter(l=>l!=='Check'):labels;
+    return{mode:pp.mode,street,solver:true,exploit:CFG.exploit,sc,board,hands,tags:[],opts,
+      line:pp.mode==='size'?`${S}: you're betting each of these hands. Pick the solver's preferred size: ${sizes}.`
+        :`${S}: ${sc.heroIP?'villain checks to you.':'you act first.'} Tag each hand with the solver's main play: check, or bet ${sizes}.`,
+      summary:bars(`Solver's whole-range ${S.toLowerCase()} strategy`,toRows(nodeP).rows,labels)+foot}}
+  // Facing a bet: pick the size in proportion to how often the raiser uses it.
+  const cb=unpack(nodeP),bets=nodeP.a.map((a,i)=>[a,cb.reduce((s,r)=>s+r.q[i],0)]).filter(([a,w])=>(a.startsWith('BET')||a==='ALLIN')&&w>0&&nodeV[a]);
   if(!bets.length)return null;
   let roll=Math.random()*bets.reduce((s,x)=>s+x[1],0),act=bets[0][0];for(const[a,w]of bets){roll-=w;if(roll<=0){act=a;break}}
-  const chips=parseFloat(act.split(' ')[1]),B=usd(chips/10),f=chips/sp.potChips,{labels,rows}=toRows(bd.vs[act]);
-  const hands=pickHands(rows,5);hands.forEach(x=>x.d=decide(x));
+  const chips=act==='ALLIN'?stackChips:parseFloat(act.split(' ')[1]),B=ch(chips),f=chips/potChips,{labels,rows}=toRows(nodeV[act]);
+  const hands=pickHands(rows,5);
+  hands.forEach(x=>{x.d=decide(x);
+    if(CFG.exploit&&street!=='flop'&&f>=.7){const cont=(x.q.Call||0)+(x.q.Raise||0);
+      if(cont>0&&cont<=(street==='river'?3:2)&&(x.q.Raise||0)<2)x.d={ans:'Fold',ok:['Fold'],why:x.d.why+' '+EXPLOIT_NOTE.fold,exploit:true}}});
   const need=needEq(B,pot+2*B),mdf=pot/(pot+B),cont=rows.reduce((s,r)=>s+4-(r.q.Fold||0),0)/(4*rows.length);
-  return{mode:'face',solver:true,sc,board,hands,tags:[],opts:['Raise','Call','Fold'].filter(l=>labels.includes(l)),B,f,need,mdf,
-    line:`${sc.heroIP?'':'You check. '}<strong>${V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot). Price: ${pct(need)}${rakeOf(pot+2*B)?' after rake':''} · MDF ${pct(mdf)}.`,
+  return{mode:'face',street,solver:true,exploit:CFG.exploit,sc,board,hands,tags:[],opts:['Raise','Call','Fold'].filter(l=>labels.includes(l)),B,f,need,mdf,
+    line:`${S}: ${sc.heroIP?'':'you check. '}<strong>${V} bets ${money(B)}</strong> (${Math.round(f*100)}% pot). Price: ${pct(need)}${rakeOf(pot+2*B)?' after rake':''} · MDF ${pct(mdf)}.`,
     summary:`<h4 class="sh">Solver's whole range vs this bet</h4><div class="meter"><i style="width:${cont*100}%"></i><b style="left:${mdf*100}%"></b></div>
       <p class="note">The solver continues with <strong>${pct(cont)}</strong> of your ${rows.length} combos. MDF (black tick) is ${pct(mdf)}.</p>${foot}`}}
 function ppGen(){
   // Solver spots cover 6-max single-raised and 3-bet pots; iso pots, 9-max and the blocker drill use the model.
-  if(SOLVER&&CFG.table===6&&pp.mode!=='block'&&(pp.pots.has('srp')||pp.pots.has('tbp'))&&!(pp.mode==='bet'&&pp.pots.has('iso')&&Math.random()<.34)){const s=ppGenSolver();if(s)return s}
+  const solverOnly=pp.mode==='size'||(pp.street!=='flop'&&pp.mode!=='block');
+  if(SOLVER&&CFG.table===6&&pp.mode!=='block'&&(pp.pots.has('srp')||pp.pots.has('tbp'))&&(solverOnly||!(pp.mode==='bet'&&pp.pots.has('iso')&&Math.random()<.34))){for(let i=0;i<6;i++){const s=ppGenSolver();if(s)return s}}
+  if(solverOnly)return null;
   const map=pp.mode==='face'?{srp:'srp_call',tbp:'tbp_call'}:{srp:'srp_pfr',tbp:'tbp_pfr',iso:'iso'};
   let types=[...pp.pots].map(p=>map[p]).filter(Boolean);if(!types.length)types=[pp.mode==='face'?'srp_call':'srp_pfr'];
   const it=CFG.iters;
@@ -1262,17 +1369,18 @@ function renderPP(){
   $('#v-postflop').innerHTML=`<h2 class="vt">Postflop</h2>
   <p class="vsub">Spots marked <span class="pill g">Solver</span> are graded against TexasSolver solutions; <span class="pill">Model</span> spots use simulated equity and rules of thumb. Several answers can be correct when a spot is mixed.</p>
   <div class="toolbar">${seg(PP_MODES,pp.mode,'ppmode')}
-  <div class="chips"><span class="lab">Pot type</span>${[['srp','Single-raised'],['tbp','3-bet pot'],['iso','Iso pot']].filter(x=>!(pp.mode==='face'&&x[0]==='iso')).map(([k,l])=>chip(l,pp.pots.has(k),'pppot',k)).join('')}</div></div>
+  ${pp.mode!=='block'?`<div class="chips"><span class="lab">Street</span>${STREETS.map(([k,l])=>chip(l,pp.street===k,'ppstreet',k)).join('')}</div>`:''}
+  <div class="chips"><span class="lab">Pot type</span>${[['srp','Single-raised'],['tbp','3-bet pot'],['iso','Iso pot']].filter(x=>!((pp.mode==='face'||pp.mode==='size'||(pp.street!=='flop'&&pp.mode!=='block'))&&x[0]==='iso')).map(([k,l])=>chip(l,pp.pots.has(k),'pppot',k)).join('')}</div></div>
   <div class="spot" id="pp-spot"></div>`;ppNext()}
 function ppNext(){
   const el=$('#pp-spot');Timer.stop();el.innerHTML='<p class="busy">Running equities…</p>';
-  setTimeout(()=>{const s=ppGen();pp.spot=s;if(!s){el.innerHTML='<p class="empty">Could not build a spot. Try again.</p>';return}
-    const head=`${timerHTML()}<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · ${s.sc.H} vs ${s.sc.V} <span class="pill ${s.solver?'g':''}">${s.solver?'Solver':'Model'}</span></span><span class="pot">Pot ${money(s.sc.pot)}</span></div>
+  setTimeout(()=>{const s=ppGen();pp.spot=s;if(!s){el.innerHTML=(pp.mode==='size'||pp.street!=='flop')&&pp.mode!=='block'?`<p class="empty">${pp.mode==='size'?'Bet sizing':'Turn and river'} spots need solver data for ${CFG.stackBB}bb, 6-max, single-raised or 3-bet pots. ${SOLVER&&!Object.values(SOLVER.boards).some(b=>b.turns)?'The new solver run with turns and rivers is still in progress; spots appear as results publish.':''}</p>`:'<p class="empty">Could not build a spot. Try again.</p>';return}
+    const head=`${timerHTML()}<div class="shead"><span class="tag">${SCEN[s.sc.type].l} · ${s.sc.H} vs ${s.sc.V} <span class="pill ${s.solver?'g':''}">${s.solver?'Solver':'Model'}</span>${s.exploit?' <span class="pill b">Exploit</span>':''}</span><span class="pot">Pot ${money(s.sc.pot)}</span></div>
       <p class="prompt">${s.sc.desc}</p><div class="boardwrap"><div><div class="lbl">Flop</div><div class="board">${cardsHTML(s.board,'sm')}</div></div></div><p class="prompt">${s.line}</p>`;
     if(s.mode==='block'){
       el.innerHTML=`${head}<div class="acts blk">${s.cands.map((x,i)=>`<button class="act" data-ppblock="${i}"><kbd>${i+1}</kbd>${cardsHTML(x.cards,'xs')}</button>`).join('')}</div><div class="fb" id="pp-fb" hidden></div>`;
       Timer.start(el.querySelector('.timer i'),Math.round(CFG.postSec/2),()=>ppBlock(null));return}
-    el.innerHTML=`${head}<div id="pp-rows">${s.hands.map((x,i)=>`<div class="hrow"><div class="hc">${cardsHTML(x.cards,'xs')}</div><div class="tags">${s.opts.map(o=>`<button class="tg t-${o.split(' ')[0]}" data-pptag="${i}|${o}">${o}</button>`).join('')}</div><p class="hres" id="pp-r${i}" hidden></p></div>`).join('')}</div>
+    el.innerHTML=`${head}<div id="pp-rows">${s.hands.map((x,i)=>`<div class="hrow"><div class="hc">${cardsHTML(x.cards,'xs')}</div><div class="tags ${s.opts.length>3?'n4':''}">${s.opts.map(o=>`<button class="tg t-${o.split(' ')[0]}" data-pptag="${i}|${o}">${o}</button>`).join('')}</div><p class="hres" id="pp-r${i}" hidden></p></div>`).join('')}</div>
       <button class="next" data-ppsubmit="1">Check answers</button><div class="fb" id="pp-fb" hidden></div>`;
     Timer.start(el.querySelector('.timer i'),CFG.postSec,()=>ppSubmit())},20)}
 function ppTag(i,o){const s=pp.spot;if(!s||s.done)return;s.tags[i]=o;
@@ -1282,10 +1390,10 @@ function ppSubmit(){
   const s=pp.spot;if(!s||s.done)return;s.done=true;const ms=Timer.stop();let right=0;
   const ml=PP_MODES.find(m=>m[0]===s.mode)[1];
   s.hands.forEach((x,i)=>{const t=s.tags[i],ok=x.d.ok.includes(t);if(ok)right++;
-    record(`Postflop · ${ml} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, ${s.solver?'solver':'model'} ${x.d.ans}`,['seat:'+s.sc.H,...texDims(s.board)]);
+    record(`Postflop · ${ml}${s.street&&s.street!=='flop'?` (${s.street})`:''} · ${CATL[x.k]}`,ok,ms/s.hands.length,{tab:'postflop',mode:s.mode,street:s.street||'flop'},`${ml}: ${x.cls} (${CATL[x.k]}) on ${s.board.map(c=>R[c>>2]+'shdc'[c&3]).join('')}: you ${t||'no answer'}, ${s.solver?'solver':'model'} ${x.d.ans}`,['seat:'+s.sc.H,...texDims(s.board.slice(0,3))]);
     document.querySelectorAll(`[data-pptag^="${i}|"]`).forEach(b=>{const o=b.dataset.pptag.split('|')[1];b.disabled=true;if(o===t)b.classList.add(ok?'ok':'no');else if(x.d.ok.includes(o))b.classList.add('ok')});
     const r=$('#pp-r'+i);r.hidden=false;
-    r.innerHTML=`<span class="${ok?'ok':'no'}">${ok?'✓':'✗'} ${x.d.ok.join(' / ')}</span> · <b>${CATL[x.k]}</b>${drawName(x.f)!=='no draw'&&!['draw','wdraw'].includes(x.k)?` + ${drawName(x.f)}`:''}. ${x.d.why}`});
+    r.innerHTML=`<span class="${ok?'ok':'no'}">${ok?'✓':'✗'} ${x.d.ok.join(' / ')}</span>${x.d.exploit?' <span class="pill b">exploit</span>':''} · <b>${CATL[x.k]}</b>${drawName(x.f)!=='no draw'&&!['draw','wdraw'].includes(x.k)?` + ${drawName(x.f)}`:''}. ${x.d.why}`});
   const fb=$('#pp-fb');fb.hidden=false;
   fb.innerHTML=`<div class="verdict ${right>=4?'good':'bad'}">${right}/${s.hands.length} right<small>${(ms/1000).toFixed(1)}s</small></div>
     ${s.summary?s.summary:s.mode==='face'?`<div id="pp-mdf"><p class="busy">Checking your whole range against MDF…</p></div>`:ppVillSummary(s)}
@@ -1319,13 +1427,14 @@ function renderCharts(){
   <p class="vsub">These are the reference ranges every drill grades against. Edit any of them to match your own strategy or your pool.</p>
   <div class="row"><select id="chart-sel">${Object.keys(DEF_RANGES).map(k=>`<option value="${k}" ${k===chartKey?'selected':''}>${RANGE_LABELS[k]||k}</option>`).join('')}</select>
   ${custom?'<span class="pill g">edited</span>':''}<span class="pill">${setCombos(s)} combos · ${pct1(setCombos(s)/1326)}</span></div>
-  ${gridHTML(c=>s.has(c)?'raise':'',null)}
+  ${gridHTML(c=>s.has(c)?(HF(s).has(c)?'raise|':'raise'):'',null)}
+  ${legendHTML([['raise','In range'],['mix','50% of the time'],['','Not in range']])}
   <label for="chart-txt" class="tag">Range notation</label>
   <textarea id="chart-txt" spellcheck="false">${customRanges[chartKey]??DEF_RANGES[chartKey]}</textarea>
   <div class="row"><button class="btn2" data-chart="save">Save range</button><button class="btn2" data-chart="reset" ${custom?'':'disabled'}>Restore default</button><span class="note" id="chart-msg"></span></div>
   ${anteSteps()||rakeSteps()?`<p class="note"><strong>Your game settings adjust these in drills:</strong> ${anteSteps()?`opens and BB defence widen ${anteSteps()} step${anteSteps()>1?"s":""} for the ante`:""}${anteSteps()&&rakeSteps()?"; ":""}${rakeSteps()?"cold-calls and BB defence tighten 1 step for rake":""}.</p>`:""}
   ${deep()?'<p class="note"><strong>200bb:</strong> calls vs 3-bets in position add the “Extra calls vs 3-bet in position at 200bb” chart.</p>':''}
-  <p class="note">9-max: UTG, UTG+1 and UTG+2 have their own charts; LJ uses the 6-max UTG chart. Notation: 22+, A2s+, KTo+, A5s-A2s, 76s, AK (both suits). BB defend and SB/IP flat charts include hands that also appear in the 3-bet chart; drills subtract the 3-bets.</p>`}
+  <p class="note">9-max: UTG, UTG+1 and UTG+2 have their own charts; LJ uses the 6-max UTG chart. Add <code>:0.5</code> to any token for a 50% mix, e.g. <code>A5s-A2s:0.5</code>. Notation: 22+, A2s+, KTo+, A5s-A2s, 76s, AK (both suits). BB defend and SB/IP flat charts include hands that also appear in the 3-bet chart; drills subtract the 3-bets.</p>`}
 
 // ================= stats =================
 let resetArm=false;
@@ -1338,6 +1447,7 @@ function renderStats(){
   const row=e=>`<tr><td>${e.k.replace(/^(\w+) · /,'<span class="pill">$1</span> ')}</td><td class="num"><span class="accbar"><i style="width:${e.acc*100}%;background:${accCol(e.acc)}"></i></span>${pct(e.acc)}</td><td class="num">${e.n}</td><td class="num">${(e.ms/e.n/1000).toFixed(1)}s</td><td><button class="btn2" data-drill="${encodeURIComponent(e.k)}">Drill</button></td></tr>`;
   $('#v-stats').innerHTML=`<h2 class="vt">Leak finder</h2>
   <p class="vsub">Every answer is logged by spot. Spots with 3+ attempts are ranked by accuracy; your worst ones are your leaks. ${Cloud.user?'Synced across your signed-in devices.':'Saved on this device only until you sign in (Settings → Sync).'}</p>
+  ${wuCardHTML()}
   <div class="kv"><div>All-time<b>${tot?pct(okT/tot):'–'}</b>${tot} answers</div>${mods.map(m=>`<div>${m.m}<b>${m.acc==null?'–':pct(m.acc)}</b>${m.n} answers</div>`).join('')}</div>
   ${progressHTML()}
   ${radarsHTML()}
@@ -1393,7 +1503,7 @@ function drill(key){
   if(d.tab==='preflop'){if((d.table||6)!==CFG.table){CFG.table=d.table||6;setTable();save('ll_cfg',CFG);Cloud.saveUser();hud()}
     if(pf.table!==CFG.table)pfResetSeats();pf.sub=d.sub;pf.pos[d.sub]=new Set([d.pos]);const m=key.replace(' (9-max)','').match(/vs (\w+)$/);if(d.sub==='3bet'&&m)pf.vill=new Set([m[1]])}
   if(d.tab==='math')mt.types=new Set([d.type]);
-  if(d.tab==='postflop')pp.mode=d.mode;
+  if(d.tab==='postflop'){pp.mode=d.mode;if(d.street)pp.street=d.street}
   if(d.tab==='reading'){rr.mode=d.mode||'read';if(d.target)rr.target=d.target}
   show(d.tab)}
 
@@ -1416,6 +1526,7 @@ function openSettings(){
     ${num('s-rake','Rake (%)','0 = no rake. Applied to pots that see a flop; 4%+ tightens flats and BB defence one step',CFG.rakePct,.5,0,10)}
     ${num('s-cap','Rake cap ($)','0 = no cap',CFG.rakeCap,.25,0,20)}
     ${num('s-open','Your open size ($)','UTG–BTN. Min 3-bet is 2× open − $0.50',CFG.openSize,.25,.75,2.5)}${num('s-sbopen','Your SB open size ($)','',CFG.sbOpen,.25,.75,3)}
+    <label class="f"><span>Strategy<small>GTO grades against solver play. NL50 exploits also teach where to deviate against the pool (marked Exploit).</small></span><select id="s-exploit"><option value="gto" ${CFG.exploit?'':'selected'}>GTO</option><option value="exploit" ${CFG.exploit?'selected':''}>NL50 exploits</option></select></label>
     <label class="f"><span>Villain bet sizing<small>Standard: 3-bets 3x in position, 4x from the blinds, as solvers do. Custom: the range below.</small></span><select id="s-sizing"><option value="std" ${CFG.sizing==='custom'?'':'selected'}>Standard</option><option value="custom" ${CFG.sizing==='custom'?'selected':''}>Custom</option></select></label>
     ${num('s-tbmin','Custom 3-bet min ($)','',CFG.tbMin,.25,1,6)}${num('s-tbmax','Custom 3-bet max ($)','',CFG.tbMax,.25,1,8)}
     <h3>Drills</h3>
@@ -1431,7 +1542,7 @@ function saveSettings(){
   const v=id=>parseFloat($(id).value);
   const clamp=(x,a,b,d)=>isFinite(x)?Math.min(b,Math.max(a,x)):d;
   const t0=CFG.table;
-  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),timerOn:$('#s-timer').checked,focus:$('#s-focus').checked,sound:$('#s-sound').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
+  CFG={...CFG,table:$('#s-table').value==='9'?9:6,ante:clamp(v('#s-ante'),0,.5,0),rakePct:clamp(v('#s-rake'),0,10,0),rakeCap:clamp(v('#s-cap'),0,20,3),exploit:$('#s-exploit').value==='exploit',timerOn:$('#s-timer').checked,focus:$('#s-focus').checked,sound:$('#s-sound').checked,autoNext:$('#s-auto').checked,pfSec:clamp(v('#s-pf'),2,60,6),rrSec:clamp(v('#s-rr'),5,120,20),mathSec:clamp(v('#s-mt'),3,90,15),postSec:clamp(v('#s-pp'),10,180,40),
     openSize:clamp(v('#s-open'),.75,2.5,1.25),sbOpen:clamp(v('#s-sbopen'),.75,3,1.5),v:4,stackBB:$('#s-stack').value==='100'?100:200,sizing:$('#s-sizing').value==='custom'?'custom':'std',tbMin:clamp(v('#s-tbmin'),1,6,1.5),tbMax:clamp(v('#s-tbmax'),1,8,3),iters:clamp(v('#s-it'),200,3000,700)};
   if(CFG.tbMax<CFG.tbMin)CFG.tbMax=CFG.tbMin;setTable();loadSolver();if(CFG.table!==t0)rr.target='random';save('ll_cfg',CFG);hud();Cloud.saveUser();closeSettings();show(cur)}
 function closeSettings(){$('#overlay').hidden=true;$('#overlay').innerHTML=''}
@@ -1448,7 +1559,7 @@ function toggleSet(set,v){if(set.has(v))set.delete(v);else set.add(v)}
 document.addEventListener('click',e=>{
   if(e.target.closest('#sync-badge'))return openSettings();
   const t=e.target.closest('button');if(!t)return;const d=t.dataset;
-  if(d.tab)return show(d.tab);
+  if(d.tab){if(WU.active)wuFinish(true);return show(d.tab)}
   if(d.pfsub){pf.sub=d.pfsub;return renderPF()}
   if(d.pfpos){toggleSet(pf.pos[pf.sub],d.pfpos);return renderPF()}
   if(d.pfvill){toggleSet(pf.vill,d.pfvill);return renderPF()}
@@ -1457,6 +1568,7 @@ document.addEventListener('click',e=>{
   if(d.poact)return poHero(d.poact);
   if(d.pochart)return poChart(+d.pochart);
   if(d.next){clearTimeout(pf.q&&pf.q.auto);clearTimeout(mt.q&&mt.q.auto);
+    if(WU.active&&WU.cur&&WU.cur.answered&&!(d.next==='rr'&&rr.spot&&rr.spot.qi<rr.spot.qs.length-1)&&!(d.next==='po'&&po.st&&!po.st.done))return wuNext();
     if(d.next==='pf')return pfNext();
     if(d.next==='po')return poNew();
     if(d.next==='rr'){const s=rr.spot;if(s&&s.qi<s.qs.length-1){s.qi++;return rrShowQ()}return rrNext()}
@@ -1470,6 +1582,7 @@ document.addEventListener('click',e=>{
   if(d.mtans)return mtAnswer(d.mtans);
   if(d.ppmode){pp.mode=d.ppmode;return renderPP()}
   if(d.pppot){toggleSet(pp.pots,d.pppot);return renderPP()}
+  if(d.ppstreet){pp.street=d.ppstreet;return renderPP()}
   if(d.pptag){const[i,o]=d.pptag.split('|');return ppTag(+i,o)}
   if(d.ppsubmit)return ppSubmit();
   if(d.ppblock)return ppBlock(+d.ppblock);
@@ -1478,6 +1591,7 @@ document.addEventListener('click',e=>{
       customRanges[chartKey]=txt;save('ll_ranges',customRanges);Cloud.saveUser();renderCharts();$('#chart-msg').textContent='Saved. Drills now use this range.';return}
     delete customRanges[chartKey];save('ll_ranges',customRanges);Cloud.saveUser();return renderCharts()}
   if(d.drill)return drill(decodeURIComponent(d.drill));
+  if(d.wu){if(d.wu==='start')return wuStart();if(d.wu==='stop')return wuFinish(true)}
   if(d.reset){if(!resetArm){resetArm=true;return renderStats()}
     STATS={};MISSES=[];DAYS={};MISSED={};PENDING={stats:{},misses:[],days:{}};save('ll_stats',STATS);save('ll_misses',MISSES);save('ll_days',DAYS);save('ll_missed',MISSED);save('ll_pending',PENDING);Cloud.saveUser();resetArm=false;
     Cloud.resetStats().catch(e=>Cloud.fail(e));return renderStats()}

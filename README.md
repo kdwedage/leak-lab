@@ -52,7 +52,15 @@ The config values are safe to publish; they only identify the project. The rules
 - **Play it out:** whole preflop hands at a 100bb table. Bots at the other seats play the app's charts (no limping); every decision you make is timed and graded against the chart for that exact spot, including squeezes, 4-bets and jams. Deep spots (vs 4-bet, vs 5-bet jam, cold 4-bets, flatting then facing a 3-bet) use simplified ranges in `poR()`.
 - **Focus on my leaks** (Settings, on by default): seats and math drills you get wrong are dealt more often, and preflop hands you missed in a spot come back (tagged *Missed before*) until you answer them correctly.
 - **Bet sizing** (Settings): *Standard* uses solver-style sizes (3-bet 3x in position, 4x from the blinds; 4-bet about 2.2x in position, 2.5x out of position). *Custom* uses your own 3-bet range.
-- **Last 30 days** chart on the Leaks tab, synced across devices.
+- **Last 30 days** chart and **skill radars** on the Leaks tab, synced across devices.
+- **Daily warm-up** (Leaks tab): 20 timed questions across every tab, weighted toward your weakest spots (each of your top leaks appears twice). Scores are kept as history and synced.
+- **Postflop streets:** Flop, Turn or River. Turn and river spots follow the main line (a called ⅓-pot c-bet, then the raiser's main turn bet called) and are graded against solver turn and river solves.
+- **Bet sizing** drill (Postflop): you're betting the hand; pick the size the solver prefers on that street.
+- **Strategy: GTO or NL50 exploits** (Settings). Exploit mode keeps solver grading but marks where to deviate against the NL50 pool: fold bluff-catchers to big turn and river bets the solver only calls part of the time, give up river bluffs with under 35% equity, bet thin river value (55–80% equity), and fold the bottom of the calling range or skip 4-bet bluffs against NL50 3-bets.
+
+## Preflop charts
+
+The default charts target 6-max, 100bb, 2.5bb opens (3bb from the SB) and online rake of about 5% with a cap. They are calibrated to frequencies published by free solver-chart sites (for example, opens of about 15–17% UTG, 19–22% HJ, 25–28% CO, 40–45% BTN; mostly 3-bet-or-fold in position; SB 3-bet-or-fold), not copied from any one source. Hands on the edge of a range are 50% mixes (`AJo:0.5`), shown as split cells; either action is graded correct. Edit any chart in the Charts tab.
 
 ## Game settings
 
@@ -70,14 +78,17 @@ A step moves each edge of a range by one notch (K9s+ ↔ K8s+, 77-JJ ↔ 66-JJ).
 Postflop drills marked **Solver** are graded against [TexasSolver](https://github.com/bupticybee/TexasSolver) v0.2.0 (open source, AGPL v3), run locally on the CPU.
 
 - **Spots:** BTN, CO, UTG and SB opens called by the BB; BB 3-bets BTN; BTN 3-bets CO. 6-max, 100bb, opens 2.5bb (3bb from the SB), 3-bets 3x in position and 4x out of position.
-- **Ranges:** the app's default charts (`solver/ranges.js` reads them straight from `index.html`).
-- **Tree:** flop c-bets of 33% or 75% pot, raises 60% or all-in, no donk bets; turn and river 75% or all-in. Solved to 1% of the pot.
+- **Ranges:** the app's default charts, with 50% hands sent at weight 0.5 (`solver/ranges.js` reads them straight from `index.html`).
+- **Flop:** c-bets of 33% or 75% pot, raises 60% or all-in, no donk bets.
+- **Turn:** after a called 33% c-bet, two turn cards per flop (a blank and an action card). The raiser bets 50% or 100% pot. Ranges are the hands that took the flop line, weighted per hand class (TexasSolver takes weights per class, not per combo).
+- **River:** after the raiser's main turn bet is called, one blank river. Bets of 75% pot or all-in.
+- Every street is solved to about 1% of the pot.
 - **No rake:** TexasSolver has no rake option. Rake mainly changes preflop ranges; the app still applies your rake to pot odds.
 - **Grading:** frequencies are stored in quarters (0, 25, 50, 75, 100%). Any play the solver uses 25% of the time or more counts as correct.
 
 Results exist for 100bb (`solver-data.json`) and 200bb (`solver-data-200.json`). For 200bb, set `LEAK_DEPTH=200` (or pass `-Depth 200` to the .ps1 scripts); files and folders get a `200` suffix.
 
-To re-run (for example after editing charts): copy `solver/` into `C:\Users\kevin\TexasSolver\work`, run `node ranges.js`, then `run-batch.ps1` (2–4 minutes per flop, resumable), then `node build-data.js`, and commit `solver-data.json`.
+To re-run (for example after editing charts): copy `solver/` into `C:\Users\kevin\TexasSolver\work`, run `node ranges.js`, then `run-batch.ps1` (about 4–8 minutes per flop including its turns and rivers, resumable; `run-both.ps1` does 100bb then 200bb), then `node build-data.js`, and commit `solver-data.json`.
 
 Spots without solver data (iso pots, 9-max, the blocker drill) fall back to the equity model and are marked **Model**.
 

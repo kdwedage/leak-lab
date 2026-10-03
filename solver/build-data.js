@@ -22,7 +22,7 @@ const pack = n => {
 };
 const data = {
   meta: { solver: 'TexasSolver v0.2.0', generated: new Date().toISOString().slice(0, 10), stackBB: DEPTH, rake: 'none',
-    tree: 'Flop: raiser c-bets 33% or 75%, caller raises 60% or all-in, no donk bets. Turn and river: 75% bet or all-in. Accuracy 1% of pot.' },
+    tree: 'Flop: raiser c-bets 33% or 75%, caller raises 60% or all-in, no donk bets. Turn (after a called 33% c-bet, 2 cards): raiser bets 50% or 100%. River (after the main turn bet is called, 1 card): 75% or all-in. Turn and river ranges are the hands that took the line, weighted per hand class. Accuracy 1% of pot.' },
   spots: {}, boards: {},
 };
 for (const f of fs.readdirSync(OUT).filter(f => f.endsWith('.json'))) {
@@ -30,7 +30,9 @@ for (const f of fs.readdirSync(OUT).filter(f => f.endsWith('.json'))) {
   data.spots[r.spot] = { ...spotsMeta[r.spot], pfr: r.pfr, potBB: r.pot, potChips: r.potChips, stackBB: r.stack };
   const vs = {};
   for (const [a, n] of Object.entries(r.vsBet)) vs[a] = pack(n);
-  data.boards[`${r.spot}|${r.board}`] = { expl: r.exploitability, cbet: pack(r.cbet), vs };
+  const packStreet = x => { const v = {}; for (const [a, n] of Object.entries(x.vs)) v[a] = pack(n); return { c: x.card, line: x.line, potChips: x.potChips, stackChips: x.stackChips, expl: x.expl, pfr: pack(x.pfr), vs: v }; };
+  const turns = (r.turns || []).map(t => ({ ...packStreet(t), river: t.river ? packStreet(t.river) : null }));
+  data.boards[`${r.spot}|${r.board}`] = { expl: r.exploitability, stackChips: r.stackChips, cbet: pack(r.cbet), vs, turns };
 }
 fs.writeFileSync(DEST, JSON.stringify(data));
 console.log(`${Object.keys(data.boards).length} solved boards → ${path.basename(DEST)} (${(fs.statSync(DEST).size / 1024).toFixed(0)} KB)`);
