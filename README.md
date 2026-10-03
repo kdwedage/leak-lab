@@ -56,8 +56,9 @@ The config values are safe to publish; they only identify the project. The rules
 
 ## Game settings
 
-Settings (gear icon) → **Game**: table size (6-max or 9-max), ante per player, rake % and cap, your open sizes and the villain 3-bet size range.
+Settings (gear icon) → **Game**: stack depth (100bb or 200bb, default 200bb), table size (6-max or 9-max), ante per player, rake % and cap, your open sizes and the villain 3-bet size range.
 
+- **200bb** adds deep-stack in-position calls vs 3-bets (chart `call3b.deepIP`), shrinks stack-off ranges in Play it out to AA/KK, uses $100 stacks, and grades Postflop against `solver-data-200.json`.
 - **9-max** adds UTG, UTG+1, UTG+2 and LJ. The three earliest seats have their own charts (`rfi.UTG9`, `rfi.UTG1`, `rfi.UTG2`, plus `3bet_vs.EP9`, `flat.vsEP9`, `bbdef.vsEP9`); LJ uses the 6-max UTG charts.
 - **Ante** goes into every pot. When total antes reach 1bb, opening and BB-defend ranges widen one step (two steps at 2bb).
 - **Rake** is taken from pots that see a flop (no flop, no drop). It raises the equity you need to call in every pot-odds calculation, and at 4% or more it tightens cold-calls and BB defence one step.
@@ -73,6 +74,8 @@ Postflop drills marked **Solver** are graded against [TexasSolver](https://githu
 - **Tree:** flop c-bets of 33% or 75% pot, raises 60% or all-in, no donk bets; turn and river 75% or all-in. Solved to 1% of the pot.
 - **No rake:** TexasSolver has no rake option. Rake mainly changes preflop ranges; the app still applies your rake to pot odds.
 - **Grading:** frequencies are stored in quarters (0, 25, 50, 75, 100%). Any play the solver uses 25% of the time or more counts as correct.
+
+Results exist for 100bb (`solver-data.json`) and 200bb (`solver-data-200.json`). For 200bb, set `LEAK_DEPTH=200` (or pass `-Depth 200` to the .ps1 scripts); files and folders get a `200` suffix.
 
 To re-run (for example after editing charts): copy `solver/` into `C:\Users\kevin\TexasSolver\work`, run `node ranges.js`, then `run-batch.ps1` (2–4 minutes per flop, resumable), then `node build-data.js`, and commit `solver-data.json`.
 

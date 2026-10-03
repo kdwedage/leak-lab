@@ -3,7 +3,9 @@
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const SOLVER = 'C:/Users/kevin/TexasSolver/TexasSolver-v0.2.0-Windows/console_solver.exe';
 const WORK = __dirname;
-const spots = JSON.parse(fs.readFileSync(path.join(WORK, 'spots.json'), 'utf8'));
+const DEPTH = +(process.env.LEAK_DEPTH || 100), SUF = DEPTH === 100 ? '' : String(DEPTH);   // stack depth in big blinds
+const OUTDIR = 'out' + SUF;
+const spots = JSON.parse(fs.readFileSync(path.join(WORK, `spots${SUF ? '-' + SUF : ''}.json`), 'utf8'));
 
 function input(s, board, outFile) {
   const pfr = s.pfr, caller = pfr === 'ip' ? 'oop' : 'ip';
@@ -37,7 +39,7 @@ function extract(s, j) {
 function solve(spotKey, board) {
   const s = spots[spotKey];
   const tag = `${spotKey}_${board}`, inFile = path.join(WORK, 'in', tag + '.txt'), raw = path.join(WORK, 'raw.json');
-  fs.mkdirSync(path.join(WORK, 'in'), { recursive: true }); fs.mkdirSync(path.join(WORK, 'out'), { recursive: true });
+  fs.mkdirSync(path.join(WORK, 'in'), { recursive: true }); fs.mkdirSync(path.join(WORK, OUTDIR), { recursive: true });
   const b = board.match(/../g).join(',');
   fs.writeFileSync(inFile, input(s, b, raw.replace(/\\/g, '/')));
   const t0 = Date.now();
@@ -50,9 +52,9 @@ function solve(spotKey, board) {
   const log = fs.readFileSync(logFile, 'utf8');
   const expl = (log.match(/Total exploitability ([\d.]+)/g) || []).pop();
   const j = JSON.parse(fs.readFileSync(raw, 'utf8'));
-  const res = { spot: spotKey, board, pot: s.pot, potChips: Math.round(s.pot * 10), stack: s.stack, pfr: s.pfr, secs: (Date.now() - t0) / 1000,
+  const res = { spot: spotKey, board, depth: DEPTH, pot: s.pot, potChips: Math.round(s.pot * 10), stack: s.stack, pfr: s.pfr, secs: (Date.now() - t0) / 1000,
     exploitability: expl ? parseFloat(expl.split(' ').pop()) : null, ...extract(s, j) };
-  fs.writeFileSync(path.join(WORK, 'out', tag + '.json'), JSON.stringify(res));
+  fs.writeFileSync(path.join(WORK, OUTDIR, tag + '.json'), JSON.stringify(res));
   fs.unlinkSync(raw);
   return res;
 }
