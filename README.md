@@ -49,6 +49,7 @@ The config values are safe to publish; they only identify the project. The rules
 ## Drill features
 
 - **Facing an open:** 3-bet, call or fold against an open from each seat, including BB defence and SB 3-bet-or-fold.
+- **Play it out:** whole preflop hands at a 100bb table. Bots at the other seats play the app's charts (no limping); every decision you make is timed and graded against the chart for that exact spot, including squeezes, 4-bets and jams. Deep spots (vs 4-bet, vs 5-bet jam, cold 4-bets, flatting then facing a 3-bet) use simplified ranges in `poR()`.
 - **Focus on my leaks** (Settings, on by default): seats and math drills you get wrong are dealt more often, and preflop hands you missed in a spot come back (tagged *Missed before*) until you answer them correctly.
 - **Bet sizing** (Settings): *Standard* uses solver-style sizes (3-bet 3x in position, 4x from the blinds; 4-bet about 2.2x in position, 2.5x out of position). *Custom* uses your own 3-bet range.
 - **Last 30 days** chart on the Leaks tab, synced across devices.

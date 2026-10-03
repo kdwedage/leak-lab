@@ -218,6 +218,15 @@ textarea{width:100%;min-height:110px;resize:vertical;line-height:1.5}
 .blk .act.picked{box-shadow:inset 0 0 0 3px var(--ink)}
 .blk .act.right{box-shadow:inset 0 0 0 3px var(--good)}
 .busy{font:500 12px var(--f-mono);color:var(--muted)}
+.seat.turn{border-color:var(--brass);box-shadow:0 0 0 1px var(--brass)}
+.seat .mini{display:block;font:600 11px var(--f-mono);margin-top:2px;white-space:nowrap}
+.act small.amt{display:block;font:500 11px var(--f-mono);opacity:.85;text-transform:none;letter-spacing:0;margin-top:3px}
+.po-board{margin-left:10px}
+.po-log{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.po-d{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:13.5px}
+.po-d>span:nth-child(2){min-width:0}
+.po-chart{grid-column:1/-1}
+.btn2.sm{padding:5px 10px;font-size:12px}
 .progwrap{position:relative}
 .prog{width:100%;height:auto;display:block}
 .pg-grid{stroke:var(--line);stroke-width:1}
@@ -613,11 +622,11 @@ async function authAct(kind){
   }catch(e){say(({'auth/invalid-credential':'Email or password is wrong.','auth/wrong-password':'Email or password is wrong.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/invalid-email':'That email address looks wrong.','auth/network-request-failed':'No connection. Try again when online.','auth/operation-not-allowed':'Email/password sign-in is off in Firebase. Turn it on under Authentication → Sign-in method.'})[e.code]||e.message)}}
 
 // ================= preflop =================
-const COLOR={Raise:'raise','4-Bet':'four','3-Bet':'four',Call:'call',Limp:'limp',Complete:'limp',Fold:'',Check:''};
-const PF_SUBS=[['rfi','RFI'],['open','Facing an open'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller']];
-const pfHeroes=sub=>({rfi:POS.slice(0,-1),open:POS.slice(1),'3bet':POS.slice(0,-1),limp:POS.slice(1),squeeze:POS.slice(2)})[sub];
+const COLOR={Raise:'raise','4-Bet':'four','3-Bet':'four','All-in':'four',Call:'call',Limp:'limp',Complete:'limp',Fold:'',Check:''};
+const PF_SUBS=[['rfi','RFI'],['open','Facing an open'],['3bet','Facing 3-bet'],['limp','Limpers'],['squeeze','Open + caller'],['play','Play it out']];
+const pfHeroes=sub=>({rfi:POS.slice(0,-1),open:POS.slice(1),'3bet':POS.slice(0,-1),limp:POS.slice(1),squeeze:POS.slice(2),play:POS.slice()})[sub];
 const pf={sub:'rfi',pos:{},vill:new Set(),q:null,last:null,table:null};
-function pfResetSeats(){['rfi','open','3bet','limp','squeeze'].forEach(k=>pf.pos[k]=new Set(pfHeroes(k)));pf.vill=new Set(POS.slice(1));pf.opener=new Set(POS.slice(0,-1));pf.table=CFG.table}
+function pfResetSeats(){['rfi','open','3bet','limp','squeeze','play'].forEach(k=>pf.pos[k]=new Set(pfHeroes(k)));pf.vill=new Set(POS.slice(1));pf.opener=new Set(POS.slice(0,-1));pf.table=CFG.table}
 const after=h=>POS.slice(POS.indexOf(h)+1);
 const isIP=(a,b)=>PO[a]>PO[b];
 const EP=p=>['UTG','UTG1','UTG2','LJ','HJ'].includes(p);
@@ -731,6 +740,106 @@ function pfPickHand(q){
     if(cls!==pf.last)break}
   pf.last=cls;return{cls,cards:pick(classCombos(cls))}}
 
+// ================= play it out: whole preflop hands vs chart-playing bots =================
+const po={st:null},STACK=50,sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let _poR=null;
+// Deep-pot ranges (simplified, 100bb): continuing after a 3-bet you flatted, cold 4-bets, and play vs 4-bets and jams.
+const poR=()=>_poR||(_poR={cold4:parseRange('KK+, AKs'),flat3:parseRange('TT-JJ, AQs, AJs, KQs'),jam4:parseRange('KK+, AKs, AKo'),
+  call4:parseRange('QQ-JJ, AQs'),call5:parseRange('QQ+, AKs, AKo'),aakk:parseRange('KK+')});
+function poNew(){
+  Timer.stop();const seats=[...pf.pos.play],el=$('#pf-spot');
+  if(!seats.length){el.innerHTML='<p class="empty">Pick at least one seat.</p>';return}
+  const H=CFG.focus?pickWeighted(seats,p=>{const s=STATS['@seat:'+p];return !s||s.n<3?1.5:.5+2*(1-s.ok/s.n)}):pick(seats);
+  const d=shuffle([...Array(52).keys()]),hands={};POS.forEach((p,i)=>hands[p]=[d[2*i],d[2*i+1]].sort((a,b)=>b-a));
+  const st={H,hands,c:{},label:{},in:new Set(POS),needs:new Set(POS),allin:new Set(),vol:{},callers:[],raises:0,cur:.5,opener:null,tb:null,fb:null,openAmt:0,idx:-1,dec:[],done:false,turn:null,pending:null,board:null,result:''};
+  POS.forEach(p=>{st.c[p]=0;st.label[p]=''});st.c.SB=.25;st.c.BB=.5;st.label.SB='$0.25';st.label.BB='$0.50';
+  po.st=st;poRun(st)}
+const poPot=st=>Object.values(st.c).reduce((a,b)=>a+b,0)+anteTotal();
+function poNext(st){if(st.in.size<2)return null;const n=POS.length;for(let k=1;k<=n;k++){const p=POS[(st.idx+k)%n];if(st.needs.has(p)&&st.in.has(p)&&!st.allin.has(p))return p}return null}
+function poSit(st,p){if(st.raises===0)return'rfi';if(st.raises===1)return st.callers.length?'squeeze':'open';
+  if(st.raises===2)return p===st.opener?'vs3':st.vol[p]?'flat3':'cold3';if(st.raises===3)return p===st.tb?'vs4':'cold4';return p===st.fb?'vs5':'cold5'}
+// The chart answer for seat p right now, plus everything needed to grade, size and explain it.
+function poDecide(st,p){
+  const sit=poSit(st,p),r=poR(),O=st.opener,oop=p==='SB'||p==='BB';let ansFn,opts,size=0,key,desc,legend;
+  if(sit==='rfi'){const s=rfiSet(p);ansFn=c=>s.has(c)?'Raise':'Fold';opts=['Raise','Fold'];size=openFor(p);key=`Preflop · RFI · ${p}`;desc='Folded to you';legend=[['raise','Open'],['','Fold']]}
+  else if(sit==='open'){const tb=rng('3bet_vs.'+rk3(O)),call=p==='BB'?villFlatSet(O,'BB'):p==='SB'?(O==='BTN'?villFlatSet('BTN','SB'):new Set()):villFlatSet(O,p);
+    ansFn=c=>tb.has(c)?'3-Bet':call.has(c)?'Call':'Fold';opts=['3-Bet','Call','Fold'];size=CFG.sizing==='custom'?threeBetSize(O,p):tbStd(O,p);
+    key=`Preflop · vs open · ${p} vs ${O}`;desc=`${O} opens to ${money(st.openAmt)}`;legend=[['four','3-Bet'],['call','Call'],['','Fold']]}
+  else if(sit==='squeeze'){const sq=rng(EP(O)?'squeeze.vsEP':'squeeze.vsLP'),cl=rng(p==='BB'?'sqcall.BB':p==='SB'?'sqcall.SB':'sqcall.IP');
+    ansFn=c=>sq.has(c)?'3-Bet':cl.has(c)?'Call':'Fold';opts=['3-Bet','Call','Fold'];size=r25(st.openAmt*(3+st.callers.length+(oop?1:0)));
+    key=`Preflop · Squeeze · ${p}`;desc=`${O} opens to ${money(st.openAmt)}, ${st.callers.join(' and ')} call${st.callers.length>1?'':'s'}`;legend=[['four','Squeeze'],['call','Call'],['','Fold']]}
+  else if(sit==='vs3'){const four=fourBetSet(p),call=call3bSet(p,st.tb,st.cur/st.openAmt);
+    ansFn=c=>four.has(c)?'4-Bet':call.has(c)?'Call':'Fold';opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
+    key=`Preflop · vs 3-bet · ${p} vs ${st.tb}`;desc=`${st.tb} 3-bets to ${money(st.cur)}`;legend=[['four','4-Bet'],['call','Call'],['','Fold']]}
+  else if(sit==='flat3'){const four=rng('4bet.EP');ansFn=c=>four.has(c)?'4-Bet':r.flat3.has(c)?'Call':'Fold';opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
+    key=`Preflop · Flat, then 3-bet · ${p}`;desc=`You called; ${st.tb} 3-bets to ${money(st.cur)}`;legend=[['four','4-Bet'],['call','Call'],['','Fold']]}
+  else if(sit==='cold3'){ansFn=c=>r.cold4.has(c)?'4-Bet':'Fold';opts=['4-Bet','Call','Fold'];size=fbStd(st.cur,isIP(p,st.tb));
+    key=`Preflop · Cold vs 3-bet · ${p}`;desc=`${O} opens, ${st.tb} 3-bets to ${money(st.cur)}`;legend=[['four','4-Bet'],['','Fold']]}
+  else if(sit==='vs4'){ansFn=c=>r.jam4.has(c)?'All-in':r.call4.has(c)?'Call':'Fold';opts=['All-in','Call','Fold'];size=STACK;
+    key=`Preflop · vs 4-bet · ${p}`;desc=`${st.fb} 4-bets to ${money(st.cur)}`;legend=[['four','All-in'],['call','Call'],['','Fold']]}
+  else if(sit==='vs5'){ansFn=c=>r.call5.has(c)?'Call':'Fold';opts=['Call','Fold'];key=`Preflop · vs 5-bet jam · ${p}`;desc='All-in over your 4-bet';legend=[['call','Call'],['','Fold']]}
+  else{ansFn=c=>r.aakk.has(c)?'All-in':'Fold';opts=['All-in','Call','Fold'];size=STACK;key=`Preflop · Cold vs 4-bet+ · ${p}`;desc=`Facing a raise to ${money(st.cur)}`;legend=[['four','Continue'],['','Fold']]}
+  let fn=ansFn;
+  if(st.cur>=STACK){fn=c=>ansFn(c)==='Fold'?'Fold':'Call';opts=['Call','Fold'];legend=[['call','Call'],['','Fold']]}   // facing a shove: only call or fold
+  if(size>STACK*.45)size=STACK;
+  const cls=comboCls(...st.hands[p]),ans=fn(cls),ok=[ans];
+  if(sit==='vs4'&&cls==='QQ'&&st.cur<STACK)ok.push(ans==='All-in'?'Call':'All-in');
+  return{sit,ansFn:fn,opts,ans,ok,size,key:key+(is9()?' (9-max)':''),desc,legend,cls,toCall:Math.max(0,Math.min(st.cur,STACK)-st.c[p])}}
+function poApply(st,p,act,size){
+  st.needs.delete(p);
+  if(act==='Fold'){st.in.delete(p);st.label[p]='Fold';return}
+  if(act==='Call'){const amt=Math.min(st.cur,STACK);st.c[p]=amt;st.vol[p]=true;if(amt>=STACK)st.allin.add(p);
+    if(st.raises===1&&p!==st.opener&&!st.callers.includes(p))st.callers.push(p);st.label[p]=(amt>=STACK?'All-in ':'Call ')+money(amt);return}
+  const to=Math.min(Math.max(size,st.cur*2),STACK);st.c[p]=to;st.cur=to;st.raises++;st.vol[p]=true;if(to>=STACK)st.allin.add(p);
+  if(st.raises===1){st.opener=p;st.openAmt=to}else if(st.raises===2)st.tb=p;else if(st.raises===3)st.fb=p;
+  st.label[p]=(to>=STACK?'All-in ':['','Open ','3-Bet ','4-Bet ','5-Bet '][Math.min(st.raises,4)])+money(to);
+  POS.forEach(x=>{if(x!==p&&st.in.has(x)&&!st.allin.has(x))st.needs.add(x)})}
+async function poRun(st){
+  const fast=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(;;){
+    if(po.st!==st)return;
+    const p=poNext(st);if(!p){poEnd(st);return}
+    st.idx=POS.indexOf(p);st.turn=p;
+    if(p===st.H){poRender(st,true);return}
+    const d=poDecide(st,p);poApply(st,p,d.ans,d.size);poRender(st,false);
+    if(!fast&&!st.heroOut)await sleep(d.ans==='Fold'?80:300)}}
+function poHero(act){
+  const st=po.st;if(!st||!st.pending)return;const d=st.pending;st.pending=null;const ms=Timer.stop(),right=act!=null&&d.ok.includes(act),choice=act||'Fold';
+  st.dec.push({...d,choice:act,right});
+  record(d.key,right,ms,{tab:'preflop',sub:'play',pos:st.H,table:CFG.table},`${d.cls} · ${d.key.replace('Preflop · ','')} (played out): you ${act||'timed out'}, chart ${d.ans}`,['seat:'+st.H]);
+  noteMiss(d.key,d.cls,right);
+  poApply(st,st.H,choice,d.size);if(choice==='Fold')st.heroOut=true;
+  poRun(st)}
+function poEnd(st){
+  Timer.stop();st.done=true;st.turn=null;st.pending=null;
+  const inH=[...st.in],others=inH.filter(p=>p!==st.H),pot=poPot(st);
+  if(!st.in.has(st.H))st.result=inH.length===1?`You folded. ${inH[0]} takes the pot.`:`You folded. ${others.join(' and ')} go to the flop.`;
+  else if(inH.length===1)st.result=`Everyone folds. You win ${money(pot)}.`;
+  else if(st.cur>=STACK){
+    const used=new Set(Object.values(st.hands).flat()),deck=shuffle([...Array(52).keys()].filter(c=>!used.has(c)));st.board=deck.slice(0,5);
+    const sc={};inH.forEach(p=>sc[p]=evalCards(st.hands[p].concat(st.board)));const best=Math.max(...Object.values(sc)),win=inH.filter(p=>sc[p]===best);
+    st.result=`All-in preflop for ${money(pot)}. ${win.includes(st.H)?(win.length>1?'You chop.':'You win.'):`${win.join(' and ')} win${win.length>1?'':'s'}.`}`}
+  else st.result=`You see a flop against ${others.join(' and ')} in a ${money(pot)} pot (${(pot/.5).toFixed(1)}bb).`;
+  const right=st.dec.filter(d=>d.right).length;
+  if(st.dec.length)st.result+=` ${right}/${st.dec.length} decision${st.dec.length>1?'s':''} matched the chart.`;
+  poRender(st,false);
+  if(!st.dec.length||(CFG.autoNext&&right===st.dec.length&&!st.in.has(st.H)&&!st.board)){const s=st;setTimeout(()=>{if(po.st===s&&!$('#v-preflop').hidden&&pf.sub==='play')poNew()},st.dec.length?1000:700)}}
+function poRender(st,heroTurn){
+  const el=$('#pf-spot');if(!el)return;let d=null;if(heroTurn){d=poDecide(st,st.H);st.pending=d}
+  const pot=poPot(st),short=a=>POS.length>6&&a?a.replace(/ \$[\d.]+$/,''):a;
+  el.innerHTML=`${timerHTML()}
+    <div class="shead"><span class="tag">Play it out · you're ${st.H} · 100bb</span><span class="pot">Pot ${money(pot)}${d&&d.toCall?` · to call ${money(d.toCall)}`:''}</span></div>
+    <div class="seats n${POS.length}" style="--n:${POS.length}">${POS.map(p=>{const a=st.label[p];
+      return `<div class="seat ${p===st.H?'me':''} ${a==='Fold'?'folded':a&&a[0]!=='$'?'act':''} ${st.turn===p&&p!==st.H?'turn':''}"><b>${p}</b><span>${p===st.H&&(!a||a[0]==='$')?'You':short(a)||''}</span>${st.done&&p!==st.H&&st.in.has(p)?`<span class="mini">${st.hands[p].map(cardTxt).join('')}</span>`:''}</div>`}).join('')}</div>
+    <div class="hand">${cardsHTML(st.hands[st.H])}${st.board?`<div class="board po-board">${cardsHTML(st.board,'sm')}</div>`:''}</div>
+    ${heroTurn?`<p class="prompt"><strong>${d.desc}.</strong> Your move${d.toCall?`, ${money(d.toCall)} to call`:''}.</p>
+      <div class="acts ${d.opts.length===2?'two':''}">${d.opts.map((o,i)=>`<button class="act a-${COLOR[o]||'fold'}" data-poact="${o}"><kbd>${i+1}</kbd>${o}${o!=='Fold'&&o!=='Call'?`<small class="amt">${money(d.size)}</small>`:''}</button>`).join('')}</div>`
+     :st.done?`<p class="prompt"><strong>${st.result}</strong></p>`:`<p class="prompt busy">${st.turn?st.turn+' to act…':''}</p>`}
+    ${st.dec.length?`<div class="po-log">${st.dec.map((x,i)=>`<div class="po-d"><span class="pill ${x.right?'g':'b'}">${x.right?'✓':'✗'}</span><span><b>${x.desc}:</b> you ${x.choice?x.choice.toLowerCase():'timed out'}${x.right?'':`, chart says ${x.ok.join(' or ').toLowerCase()} with ${x.cls}`}</span><button class="btn2 sm" data-pochart="${i}">Chart</button><div class="po-chart" id="po-c${i}" hidden></div></div>`).join('')}</div>`:''}
+    ${st.done?'<button class="next" data-next="po">Next hand ↵</button>':''}`;
+  if(heroTurn)Timer.start(el.querySelector('.timer i'),CFG.pfSec,()=>poHero(null))}
+function poChart(i){const x=po.st&&po.st.dec[i],el=$('#po-c'+i);if(!x||!el)return;
+  if(el.hidden)el.innerHTML=gridHTML(c=>COLOR[x.ansFn(c)]||'',x.cls)+legendHTML(x.legend);el.hidden=!el.hidden}
 function renderPF(){
   if(pf.table!==CFG.table)pfResetSeats();
   $('#v-preflop').innerHTML=`
@@ -738,12 +847,14 @@ function renderPF(){
   <div class="toolbar">
     ${seg(PF_SUBS,pf.sub,'pfsub')}
     <div class="chips"><span class="lab">Your seat</span>${pfHeroes(pf.sub).map(p=>chip(p,pf.pos[pf.sub].has(p),'pfpos')).join('')}</div>
+    ${pf.sub==='play'?`<p class="note">Bots at every other seat play the app's charts (no limping). 100bb stacks. Every decision you make is graded against the chart for that exact spot.</p>`:''}
     ${pf.sub==='open'?`<div class="chips"><span class="lab">Opener</span>${POS.slice(0,-1).map(p=>chip(p,pf.opener.has(p),'pfopener')).join('')}</div>`:''}
     ${pf.sub==='3bet'?`<div class="chips"><span class="lab">3-bettor</span>${POS.slice(1).map(p=>chip(p,pf.vill.has(p),'pfvill')).join('')}</div>`:''}
   </div>
   <div class="spot" id="pf-spot"></div>`;
   pfNext()}
 function pfNext(){
+  if(pf.sub==='play')return poNew();
   const el=$('#pf-spot');const q=pfBuild();
   if(!q){Timer.stop();el.innerHTML='<p class="empty">No spot matches these filters. Turn on at least one seat (for 3-bets, a 3-bettor who acts after you).</p>';return}
   const h=pfPickHand(q);q.cls=h.cls;q.cards=h.cards;q.ans=q.ansFn(h.cls);pf.q=q;
@@ -1317,8 +1428,11 @@ document.addEventListener('click',e=>{
   if(d.pfvill){toggleSet(pf.vill,d.pfvill);return renderPF()}
   if(d.pfopener){toggleSet(pf.opener,d.pfopener);return renderPF()}
   if(d.pfans)return pfAnswer(d.pfans);
+  if(d.poact)return poHero(d.poact);
+  if(d.pochart)return poChart(+d.pochart);
   if(d.next){clearTimeout(pf.q&&pf.q.auto);clearTimeout(mt.q&&mt.q.auto);
     if(d.next==='pf')return pfNext();
+    if(d.next==='po')return poNew();
     if(d.next==='rr'){const s=rr.spot;if(s&&s.qi<s.qs.length-1){s.qi++;return rrShowQ()}return rrNext()}
     if(d.next==='rb')return rbNext();if(d.next==='mt')return mtNext();if(d.next==='pp')return ppNext()}
   if(d.rrmode){rr.mode=d.rrmode;return renderRR()}
