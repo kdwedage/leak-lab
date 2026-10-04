@@ -30,11 +30,12 @@ function run(tag, board, ipRange, oopRange, pot, stack, sizes) {
   const j = JSON.parse(fs.readFileSync(path.join(WORK, 'raw.json'), 'utf8')); fs.unlinkSync(path.join(WORK, 'raw.json'));
   return { j, secs: (Date.now() - t0) / 1000, expl: expl ? parseFloat(expl.split(' ').pop()) : null };
 }
-const pack = n => ({ actions: n.strategy.actions, strategy: n.strategy.strategy });
+const pack = n => (n && n.strategy && n.strategy.strategy ? { actions: n.strategy.actions, strategy: n.strategy.strategy } : null);
 // The raiser's decision node (after the caller checks if the raiser is in position) and the caller's responses to each bet.
 function decisionNodes(j, pfr) {
-  const node = pfr === 'ip' ? j.childrens.CHECK : j, res = { pfr: pack(node), vs: {} };
-  for (const a of node.strategy.actions) if (a.startsWith('BET') && node.childrens[a] && node.childrens[a].strategy) res.vs[a] = pack(node.childrens[a]);
+  const node = pfr === 'ip' ? j.childrens && j.childrens.CHECK : j, res = { pfr: pack(node), vs: {} };
+  if (!res.pfr) return res;
+  for (const a of node.strategy.actions) { const p = node.childrens && pack(node.childrens[a]); if (a.startsWith('BET') && p) res.vs[a] = p; }
   return res;
 }
 // Class weights for the hands that took an action: start weight x average frequency of the action over the class's combos.
@@ -99,20 +100,21 @@ function solve(spotKey, board) {
   const flop = run(tag, board, s.ipRange, s.oopRange, s.pot, s.stack, flopSizes(s)), fn = decisionNodes(flop.j, s.pfr);
   const res = { spot: spotKey, board, depth: DEPTH, pot: s.pot, potChips: Math.round(s.pot * 10), stackChips: Math.round(s.stack * 10), stack: s.stack, pfr: s.pfr,
     exploitability: flop.expl, cbet: fn.pfr, vsBet: fn.vs, turns: [] };
-  const small = mainBet(fn.pfr, true);
+  const small = fn.pfr && mainBet(fn.pfr, true);
   if (small && fn.vs[small]) {
     const t = nextStreet(s, fn, small, s.pot, s.stack, s.ipRange, s.oopRange);
-    for (const tc of pickCards(board, 2)) {
+    for (const tc of pickCards(board, 2)) try {
       const tb = board + tc, tr = run(`${tag}_${tc}`, tb, t.ipRange, t.oopRange, t.pot, t.stack, turnSizes(s)), tn = decisionNodes(tr.j, s.pfr);
       const turn = { card: tc, line: small, pot: t.pot, potChips: Math.round(t.pot * 10), stackChips: Math.round(t.stack * 10), expl: tr.expl, pfr: tn.pfr, vs: tn.vs, river: null };
+      if (!tn.pfr) continue;
       const tbet = mainBet(tn.pfr, false);
-      if (tbet && tn.vs[tbet]) {
+      if (tbet && tn.vs[tbet]) try {
         const rv = nextStreet(s, tn, tbet, t.pot, t.stack, t.ipRange, t.oopRange), rc = pickCards(tb, 1)[0];
         const rr = run(`${tag}_${tc}${rc}`, tb + rc, rv.ipRange, rv.oopRange, rv.pot, rv.stack, riverSizes(s)), rn = decisionNodes(rr.j, s.pfr);
-        turn.river = { card: rc, line: tbet, pot: rv.pot, potChips: Math.round(rv.pot * 10), stackChips: Math.round(rv.stack * 10), expl: rr.expl, pfr: rn.pfr, vs: rn.vs };
-      }
+        if (rn.pfr) turn.river = { card: rc, line: tbet, pot: rv.pot, potChips: Math.round(rv.pot * 10), stackChips: Math.round(rv.stack * 10), expl: rr.expl, pfr: rn.pfr, vs: rn.vs };
+      } catch (e) { turn.riverError = e.message; }
       res.turns.push(turn);
-    }
+    } catch (e) { res.turnErrors = (res.turnErrors || []).concat(`${tc}: ${e.message}`); }   // keep the flop result
   }
   res.secs = (Date.now() - t0) / 1000;
   fs.writeFileSync(path.join(WORK, OUTDIR, tag + '.json'), JSON.stringify(res));
